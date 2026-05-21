@@ -1,0 +1,1 @@
+//暫時保留 localStorage 相關函式
