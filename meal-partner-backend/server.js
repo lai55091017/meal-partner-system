@@ -13,6 +13,8 @@ const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const partyRoutes = require("./routes/party.routes");
 const chatRoutes = require("./routes/chat.routes");
+const notificationRoutes = require("./routes/notification.routes");
+const ratingRoutes = require("./routes/rating.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +22,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+app.use("/api/ratings", ratingRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/parties", partyRoutes);

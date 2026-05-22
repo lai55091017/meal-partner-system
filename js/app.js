@@ -159,6 +159,9 @@
     let backendParties = [];
     let currentChatMessages = [];
     let chatPreviewCache = {};
+    let ratingReviewedCache = new Set();
+    let receivedRatingsCache = [];
+    let ratingSummaryCache = { average: null, count: 0 };
 
     // 首頁預設示範飯局：讓系統一開始就有一張卡片可操作。
     const DEFAULT_MY_PARTY = {
@@ -370,9 +373,9 @@
 
     /* ======================================================
      * 6. 通知功能
-     *    目前使用 localStorage 暫存通知紀錄。
+     *    已改為 PostgreSQL 資料庫儲存；未登入或 API 失敗時才暫用 localStorage fallback。
      * ====================================================== */
-    function loadNotifications() {
+    function loadLocalNotifications() {
         try {
             const saved = localStorage.getItem(NOTIFICATIONS_KEY);
             return saved ? JSON.parse(saved) : [];
@@ -382,33 +385,94 @@
         }
     }
 
-    function saveNotifications(notifications) {
+    function saveLocalNotifications(notifications) {
         localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications.slice(0, 50)));
     }
 
-    function deleteNotification(noticeId) {
+    function mapBackendNotification(notice) {
+        return {
+            id: String(notice.id),
+            type: notice.type || "system",
+            title: notice.title || "通知",
+            message: notice.message || "",
+            partyId: notice.party_id != null ? String(notice.party_id) : "",
+            createdAt: notice.created_at || notice.createdAt || new Date().toISOString(),
+            isRead: notice.is_read === true,
+        };
+    }
+
+    async function loadNotifications() {
+        if (!currentUser?.id) return loadLocalNotifications();
+
+        try {
+            const result = await api.getNotifications(currentUser.id);
+            return (result.notifications || []).map(mapBackendNotification);
+        } catch (error) {
+            console.error("讀取通知失敗，改用本機暫存：", error);
+            return loadLocalNotifications();
+        }
+    }
+
+    async function deleteNotification(noticeId) {
         if (!noticeId) return;
         if (!confirm("確定要刪除這則通知嗎？")) return;
 
-        const notifications = loadNotifications().filter((notice) => notice.id !== noticeId);
-        saveNotifications(notifications);
-        renderNotifications();
+        try {
+            if (currentUser?.id && /^\d+$/.test(String(noticeId))) {
+                await api.deleteNotification(noticeId, currentUser.id);
+            } else {
+                const notifications = loadLocalNotifications().filter((notice) => notice.id !== noticeId);
+                saveLocalNotifications(notifications);
+            }
+
+            await renderNotifications();
+        } catch (error) {
+            console.error("刪除通知失敗：", error);
+            alert(error.message || "刪除通知失敗");
+        }
     }
 
-    function addNotification(type, title, message, partyId = "") {
-        const notifications = loadNotifications();
+    async function addNotification(type, title, message, partyId = "") {
+        const createdAt = new Date().toISOString();
 
-        notifications.unshift({
-            id: `notice-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-            type,
-            title,
-            message,
-            partyId,
-            createdAt: new Date().toISOString(),
-        });
+        try {
+            if (currentUser?.id) {
+                await api.createNotification({
+                    userId: currentUser.id,
+                    type,
+                    title,
+                    message,
+                    partyId: partyId || null,
+                });
+            } else {
+                const notifications = loadLocalNotifications();
+                notifications.unshift({
+                    id: `notice-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    type,
+                    title,
+                    message,
+                    partyId,
+                    createdAt,
+                });
+                saveLocalNotifications(notifications);
+            }
 
-        saveNotifications(notifications);
-        renderNotifications();
+            await renderNotifications();
+        } catch (error) {
+            console.error("新增通知失敗，改存本機暫存：", error);
+
+            const notifications = loadLocalNotifications();
+            notifications.unshift({
+                id: `notice-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                type,
+                title,
+                message,
+                partyId,
+                createdAt,
+            });
+            saveLocalNotifications(notifications);
+            await renderNotifications();
+        }
     }
 
 
@@ -453,23 +517,111 @@
         return `飯局約在 ${formatMessageTime(endTime.toISOString())} 後才能評價。`;
     }
 
+    function markPartyReviewed(partyId) {
+        if (!partyId) return;
+        ratingReviewedCache.add(String(partyId));
+    }
+
+    function unmarkPartyReviewed(partyId) {
+        if (!partyId) return;
+        ratingReviewedCache.delete(String(partyId));
+    }
+
     function hasReviewedParty(partyId) {
+        const partyKey = String(partyId);
         const reviewerId = getCurrentUserId();
-        return loadRatings().some((rating) => rating.partyId === partyId && rating.reviewerId === reviewerId);
+
+        if (ratingReviewedCache.has(partyKey)) return true;
+
+        // fallback：非後端示範飯局或 API 尚未載入時，保留舊 localStorage 判斷。
+        return loadRatings().some((rating) => String(rating.partyId) === partyKey && String(rating.reviewerId) === String(reviewerId));
     }
 
     function getReceivedRatings(userId = getCurrentUserId()) {
-        return loadRatings().filter((rating) => rating.targetId === userId);
+        if (currentUser?.id && String(userId) === String(currentUser.id)) {
+            return receivedRatingsCache;
+        }
+
+        return loadRatings().filter((rating) => String(rating.targetId) === String(userId));
     }
 
     function getAverageRating(userId = getCurrentUserId()) {
+        if (currentUser?.id && String(userId) === String(currentUser.id)) {
+            return ratingSummaryCache.average;
+        }
+
         const received = getReceivedRatings(userId);
         if (!received.length) return null;
         const total = received.reduce((sum, rating) => sum + Number(rating.score || 0), 0);
         return total / received.length;
     }
 
-    function renderProfileRatingSummary() {
+    function mapBackendRating(rating) {
+        return {
+            id: String(rating.id),
+            partyId: String(rating.party_id),
+            partyName: rating.party_name || "飯局",
+            reviewerId: String(rating.reviewer_id),
+            reviewerName: rating.reviewer_name || rating.reviewer_account || "使用者",
+            targetId: String(rating.target_id),
+            targetName: rating.target_name || rating.target_account || "使用者",
+            score: Number(rating.score || 0),
+            comment: rating.comment || "",
+            createdAt: rating.created_at || new Date().toISOString(),
+        };
+    }
+
+    async function refreshRatingReviewedCache(partyId) {
+        if (!partyId) return false;
+
+        if (!currentUser?.id || !isBackendPartyId(partyId)) {
+            return hasReviewedParty(partyId);
+        }
+
+        try {
+            const result = await api.checkPartyReviewed(partyId, currentUser.id);
+            if (result.reviewed) markPartyReviewed(partyId);
+            else unmarkPartyReviewed(partyId);
+            return Boolean(result.reviewed);
+        } catch (error) {
+            console.error("檢查評價狀態失敗：", error);
+            return hasReviewedParty(partyId);
+        }
+    }
+
+    async function loadReceivedRatingsFromBackend() {
+        if (!currentUser?.id) {
+            receivedRatingsCache = [];
+            ratingSummaryCache = { average: null, count: 0 };
+            return;
+        }
+
+        try {
+            const [ratingsResult, summaryResult] = await Promise.all([
+                api.getReceivedRatings(currentUser.id),
+                api.getRatingSummary(currentUser.id),
+            ]);
+
+            receivedRatingsCache = (ratingsResult.ratings || []).map(mapBackendRating);
+            ratingSummaryCache = {
+                average: summaryResult.summary?.average === null || summaryResult.summary?.average === undefined
+                    ? null
+                    : Number(summaryResult.summary.average),
+                count: Number(summaryResult.summary?.count || 0),
+            };
+        } catch (error) {
+            console.error("讀取評價資料失敗，改用本機暫存：", error);
+            receivedRatingsCache = getReceivedRatings(currentUser?.id || getCurrentUserId());
+            const average = receivedRatingsCache.length
+                ? receivedRatingsCache.reduce((sum, rating) => sum + Number(rating.score || 0), 0) / receivedRatingsCache.length
+                : null;
+            ratingSummaryCache = { average, count: receivedRatingsCache.length };
+        }
+    }
+
+    async function renderProfileRatingSummary() {
+        await loadReceivedRatingsFromBackend();
+
         const average = getAverageRating();
         const received = getReceivedRatings();
 
@@ -518,10 +670,10 @@
         return labels[type] || "系統通知";
     }
 
-    function renderNotifications() {
+    async function renderNotifications() {
         if (!notificationList) return;
 
-        const notifications = loadNotifications();
+        const notifications = await loadNotifications();
         notificationList.innerHTML = "";
 
         if (notificationEmpty) notificationEmpty.hidden = notifications.length > 0;
@@ -551,7 +703,9 @@
             deleteBtn.textContent = "×";
             deleteBtn.setAttribute("aria-label", "刪除通知");
             deleteBtn.setAttribute("title", "刪除通知");
-            deleteBtn.addEventListener("click", () => deleteNotification(notice.id));
+            deleteBtn.addEventListener("click", () => {
+                deleteNotification(notice.id);
+            });
 
             actions.append(time, deleteBtn);
 
@@ -1404,6 +1558,15 @@
         }
     }
 
+    function updateRatingButtonState(party, status, reviewed) {
+        if (!partyRateBtn) return;
+
+        const ended = isPartyEnded(party);
+        partyRateBtn.disabled = status.key === "canceled" || !ended || reviewed;
+        partyRateBtn.textContent = reviewed ? "已評價" : ended ? "評價" : "尚未結束";
+        partyRateBtn.title = reviewed ? "同一場飯局只能評價一次" : ended ? "可以評價本場飯局成員" : getPartyEndHint(party);
+    }
+
     function updateJoinedActionButtons(party) {
         const status = getPartyStatus(party);
 
@@ -1420,11 +1583,15 @@
         }
 
         if (partyRateBtn) {
-            const ended = isPartyEnded(party);
-            const reviewed = hasReviewedParty(party.id);
-            partyRateBtn.disabled = status.key === "canceled" || !ended || reviewed;
-            partyRateBtn.textContent = reviewed ? "已評價" : ended ? "評價" : "尚未結束";
-            partyRateBtn.title = reviewed ? "同一場飯局只能評價一次" : ended ? "可以評價本場飯局成員" : getPartyEndHint(party);
+            const normalizedParty = normalizeParty(party);
+            const cachedReviewed = hasReviewedParty(normalizedParty.id);
+            updateRatingButtonState(normalizedParty, status, cachedReviewed);
+
+            if (isBackendPartyId(normalizedParty.id) && currentUser?.id) {
+                refreshRatingReviewedCache(normalizedParty.id).then((reviewed) => {
+                    updateRatingButtonState(normalizedParty, status, reviewed);
+                });
+            }
         }
     }
 
@@ -2254,7 +2421,7 @@
         return (party?.members || []).filter((member) => String(member.id) !== userId);
     }
 
-    function renderRatingPage() {
+    async function renderRatingPage() {
         if (!ratingList || !ratingSubmitBtn || !ratingMessage) return;
 
         ratingList.innerHTML = "";
@@ -2268,7 +2435,7 @@
 
         const party = normalizeParty(currentParty);
         const targets = getRatingTargets(party);
-        const reviewed = hasReviewedParty(party.id);
+        const reviewed = await refreshRatingReviewedCache(party.id);
 
         if (ratingPartyTitle) ratingPartyTitle.textContent = `評價「${party.partyName}」`;
 
@@ -2329,8 +2496,14 @@
         });
     }
 
-    function submitRatings() {
+    async function submitRatings() {
         if (!currentParty) return;
+
+        if (!isLoggedIn() || !currentUser?.id) {
+            alert("請先登入後再送出評價。");
+            switchView("login");
+            return;
+        }
 
         const party = normalizeParty(currentParty);
         if (!isPartyEnded(party)) {
@@ -2338,14 +2511,15 @@
             return;
         }
 
-        if (hasReviewedParty(party.id)) {
+        const reviewed = await refreshRatingReviewedCache(party.id);
+        if (reviewed) {
             alert("你已經評價過這場飯局，同一場飯局只能評價一次。 ");
-            renderRatingPage();
+            await renderRatingPage();
             return;
         }
 
         const reviewerProfile = loadProfileData();
-        const reviewerId = getCurrentUserId();
+        const reviewerId = currentUser.id;
         const reviewerName = reviewerProfile.name || currentUser?.name || currentUser?.account || "目前使用者";
         const items = $$(".rating-item", ratingList);
 
@@ -2354,52 +2528,91 @@
             return;
         }
 
-        const newRatings = items.map((item) => {
+        const ratingItems = items.map((item) => {
             const group = $(".star-rating", item);
             const comment = $(".rating-comment", item);
             return {
-                id: `rating-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                partyId: party.id,
-                partyName: party.partyName,
-                reviewerId,
-                reviewerName,
-                targetId: item.dataset.memberId,
+                targetId: Number(item.dataset.memberId),
                 targetName: item.dataset.memberName,
                 score: Number(group?.dataset.rating || 3),
                 comment: comment?.value.trim() || "",
-                createdAt: new Date().toISOString(),
             };
         });
 
-        saveRatings([...loadRatings(), ...newRatings]);
-        addNotification(
-            "rating",
-            "評價已送出",
-            `你已完成「${party.partyName}」的成員評價。`,
-            party.id
-        );
-        renderProfileRatingSummary();
-        updateJoinedActionButtons(party);
-        renderRatingPage();
-        alert("評價已送出並儲存。 ");
-        switchView("profile");
+        try {
+            if (ratingSubmitBtn) {
+                ratingSubmitBtn.disabled = true;
+                ratingSubmitBtn.textContent = "送出中...";
+            }
+
+            if (isBackendPartyId(party.id)) {
+                await api.submitRatings({
+                    partyId: Number(party.id),
+                    reviewerId,
+                    ratings: ratingItems,
+                });
+            } else {
+                const newRatings = ratingItems.map((rating) => ({
+                    id: `rating-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    partyId: party.id,
+                    partyName: party.partyName,
+                    reviewerId: String(reviewerId),
+                    reviewerName,
+                    targetId: String(rating.targetId),
+                    targetName: rating.targetName,
+                    score: rating.score,
+                    comment: rating.comment,
+                    createdAt: new Date().toISOString(),
+                }));
+                saveRatings([...loadRatings(), ...newRatings]);
+            }
+
+            markPartyReviewed(party.id);
+
+            await addNotification(
+                "rating",
+                "評價已送出",
+                `你已完成「${party.partyName}」的成員評價。`,
+                party.id
+            );
+
+            await renderProfileRatingSummary();
+            updateJoinedActionButtons(party);
+            await renderRatingPage();
+            alert("評價已送出並儲存到資料庫。 ");
+            switchView("profile");
+        } catch (error) {
+            console.error("送出評價失敗：", error);
+            alert(error.message || "送出評價失敗");
+        } finally {
+            if (ratingSubmitBtn) {
+                ratingSubmitBtn.textContent = "送出評價";
+            }
+        }
     }
 
-    function openRatingPage() {
+    async function openRatingPage() {
         if (!currentParty) return;
         const party = normalizeParty(currentParty);
+
+        if (!isLoggedIn() || !currentUser?.id) {
+            alert("請先登入後再評價。");
+            switchView("login");
+            return;
+        }
 
         if (!isPartyEnded(party)) {
             alert("飯局結束後才能評價。" + getPartyEndHint(party));
             return;
         }
 
-        if (hasReviewedParty(party.id)) {
+        const reviewed = await refreshRatingReviewedCache(party.id);
+        if (reviewed) {
             alert("你已經評價過這場飯局，同一場飯局只能評價一次。 ");
             return;
         }
 
-        renderRatingPage();
+        await renderRatingPage();
         switchView("rating");
     }
 

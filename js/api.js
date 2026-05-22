@@ -93,6 +93,25 @@ const api = {
         });
     },
 
+    getNotifications(userId) {
+        return requestApi(`/notifications/${userId}`);
+    },
+
+    createNotification(notificationData) {
+        return requestApi("/notifications", {
+            method: "POST",
+            body: JSON.stringify(notificationData),
+        });
+    },
+
+    deleteNotification(notificationId, userId) {
+        return requestApi(`/notifications/${notificationId}`, {
+            method: "DELETE",
+            body: JSON.stringify({ userId }),
+        });
+    },
+
+    //message
     getChatMessages(partyId, userId) {
         return requestApi(`/chats/${partyId}/messages?userId=${encodeURIComponent(userId)}`);
     },
@@ -103,4 +122,26 @@ const api = {
             body: JSON.stringify({ userId, message }),
         });
     },
+
+    //rating
+    submitRatings(ratingData) {
+        return requestApi("/ratings", {
+            method: "POST",
+            body: JSON.stringify(ratingData),
+        });
+    },
+
+    getReceivedRatings(userId) {
+        return requestApi(`/ratings/received/${userId}`);
+    },
+
+    getRatingSummary(userId) {
+        return requestApi(`/ratings/summary/${userId}`);
+    },
+
+    checkPartyReviewed(partyId, userId) {
+        return requestApi(`/ratings/check?partyId=${encodeURIComponent(partyId)}&userId=${encodeURIComponent(userId)}`);
+    },
+
 };
+
