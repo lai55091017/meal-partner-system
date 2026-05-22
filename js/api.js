@@ -68,14 +68,6 @@ const api = {
         });
     },
 
-    deleteParty(partyId, userId) {
-        return requestApi(`/parties/${partyId}`, {
-            method: "DELETE",
-            body: JSON.stringify({ userId }),
-        });
-    },
-
-
     getUserProfile(userId) {
         return requestApi(`/users/${userId}/profile`);
     },
@@ -91,6 +83,24 @@ const api = {
         return requestApi(`/users/${userId}/preferences`, {
             method: "PUT",
             body: JSON.stringify(preferences),
+        });
+    },
+
+    deleteParty(partyId, userId) {
+        return requestApi(`/parties/${partyId}`, {
+            method: "DELETE",
+            body: JSON.stringify({ userId }),
+        });
+    },
+
+    getChatMessages(partyId, userId) {
+        return requestApi(`/chats/${partyId}/messages?userId=${encodeURIComponent(userId)}`);
+    },
+
+    sendChatMessage(partyId, userId, message) {
+        return requestApi(`/chats/${partyId}/messages`, {
+            method: "POST",
+            body: JSON.stringify({ userId, message }),
         });
     },
 };

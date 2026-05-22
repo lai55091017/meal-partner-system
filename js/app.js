@@ -157,6 +157,8 @@
     let visibleMyPartyCount = 0;
     let visibleOtherPartyCount = 0;
     let backendParties = [];
+    let currentChatMessages = [];
+    let chatPreviewCache = {};
 
     // 首頁預設示範飯局：讓系統一開始就有一張卡片可操作。
     const DEFAULT_MY_PARTY = {
@@ -1026,9 +1028,13 @@
     async function deleteCanceledPartyRecord(partyId) {
         if (!partyId) return;
 
-        if (!confirm("確定要刪除這筆飯局紀錄嗎？刪除後資料庫也會移除，無法復原。")) {
+        if (!isLoggedIn()) {
+            alert("請先登入後再刪除飯局紀錄");
+            switchView("login");
             return;
         }
+
+        if (!confirm("確定要刪除這筆飯局紀錄嗎？刪除後會從 PostgreSQL 資料庫移除，無法復原。")) return;
 
         try {
             if (isBackendPartyId(partyId)) {
@@ -1042,7 +1048,6 @@
             if (currentChatPartyId === partyId) closeChatRoom();
 
             await loadBackendParties();
-
             renderHomeParties();
             renderChatRoomList();
             switchView("home");
@@ -1912,6 +1917,12 @@
     }
 
     function getLastChatPreview(partyId) {
+        const cachedMessage = chatPreviewCache[partyId];
+        if (cachedMessage) {
+            return `${cachedMessage.senderName || "使用者"}：${cachedMessage.text || ""}`;
+        }
+
+        // 後端聊天室尚未載入前，保留舊 localStorage 訊息作為暫時預覽。
         const messagesByParty = loadChatMessages();
         const messages = messagesByParty[partyId] || [];
         const lastMessage = messages[messages.length - 1];
@@ -1983,7 +1994,7 @@
         });
     }
 
-    function openChatRoom(partyId) {
+    async function openChatRoom(partyId) {
         if (!isLoggedIn()) {
             alert("請先登入後才能使用聊天室");
             switchView("login");
@@ -1999,26 +2010,59 @@
 
         restoreChatRoom(party.id);
         currentChatPartyId = party.id;
+        currentChatMessages = [];
 
         if (chatRoomTitle) chatRoomTitle.textContent = party.partyName;
         if (chatRoomMeta) chatRoomMeta.textContent = `${party.host}｜${party.store}｜${party.time}`;
         if (chatRoomPanel) chatRoomPanel.hidden = false;
 
         renderChatMessages();
-        chatInput?.focus();
+
+        try {
+            if (isBackendPartyId(party.id)) {
+                const result = await api.getChatMessages(party.id, currentUser.id);
+                currentChatMessages = (result.messages || []).map(mapBackendChatMessage);
+                const lastMessage = currentChatMessages[currentChatMessages.length - 1];
+                if (lastMessage) chatPreviewCache[party.id] = lastMessage;
+            } else {
+                const messagesByParty = loadChatMessages();
+                currentChatMessages = messagesByParty[party.id] || [];
+            }
+
+            renderChatMessages();
+            renderChatRoomList();
+            chatInput?.focus();
+        } catch (error) {
+            console.error("讀取聊天室訊息失敗：", error);
+            alert(error.message || "讀取聊天室訊息失敗");
+            currentChatMessages = [];
+            renderChatMessages();
+        }
     }
 
     function closeChatRoom() {
         currentChatPartyId = null;
+        currentChatMessages = [];
         if (chatRoomPanel) chatRoomPanel.hidden = true;
         renderChatRoomList();
+    }
+
+
+    function mapBackendChatMessage(message) {
+        return {
+            id: String(message.id),
+            partyId: String(message.party_id),
+            senderId: String(message.user_id),
+            senderName: message.sender_name || message.sender_account || "使用者",
+            text: message.message || "",
+            createdAt: message.created_at || new Date().toISOString(),
+        };
     }
 
     function renderChatMessages() {
         if (!chatMessageList || !currentChatPartyId) return;
 
-        const messagesByParty = loadChatMessages();
-        const messages = messagesByParty[currentChatPartyId] || [];
+        const messages = currentChatMessages || [];
         const currentUserId = getCurrentUserId();
 
         chatMessageList.innerHTML = "";
@@ -2034,7 +2078,7 @@
         messages.forEach((message) => {
             const item = document.createElement("li");
             item.className = "chat-message";
-            item.classList.toggle("chat-message--mine", message.senderId === currentUserId);
+            item.classList.toggle("chat-message--mine", String(message.senderId) === String(currentUserId));
 
             const sender = document.createElement("p");
             sender.className = "chat-message-sender";
@@ -2055,40 +2099,60 @@
         chatMessageList.scrollTop = chatMessageList.scrollHeight;
     }
 
-    function sendChatMessage(text) {
-        if (!currentChatPartyId) return;
-        if (!text.trim()) return;
+    async function sendChatMessage(text) {
+        if (!currentChatPartyId) return false;
+        if (!text.trim()) return false;
 
         const party = findAccessiblePartyById(currentChatPartyId);
         if (!party || !canUsePartyChat(party)) {
             alert("請先加入該飯局後才能傳送訊息");
             closeChatRoom();
-            return;
+            return false;
         }
 
         const profile = loadProfileData();
-        const messagesByParty = loadChatMessages();
-        const partyMessages = messagesByParty[currentChatPartyId] || [];
 
-        partyMessages.push({
-            id: `msg-${Date.now()}`,
-            partyId: currentChatPartyId,
-            senderId: getCurrentUserId(),
-            senderName: profile.name || currentUser?.name || currentUser?.account || "目前使用者",
-            text: text.trim(),
-            createdAt: new Date().toISOString(),
-        });
+        try {
+            let newMessage;
 
-        messagesByParty[currentChatPartyId] = partyMessages;
-        saveChatMessages(messagesByParty);
-        addNotification(
-            "chat",
-            "聊天室新訊息",
-            `${profile.name || currentUser?.name || currentUser?.account || "使用者"} 在「${party.partyName}」傳送新訊息：${text.trim()}`,
-            party.id
-        );
-        renderChatMessages();
-        renderChatRoomList();
+            if (isBackendPartyId(currentChatPartyId)) {
+                const result = await api.sendChatMessage(currentChatPartyId, currentUser.id, text.trim());
+                newMessage = mapBackendChatMessage(result.message);
+            } else {
+                newMessage = {
+                    id: `msg-${Date.now()}`,
+                    partyId: currentChatPartyId,
+                    senderId: getCurrentUserId(),
+                    senderName: profile.name || currentUser?.name || currentUser?.account || "目前使用者",
+                    text: text.trim(),
+                    createdAt: new Date().toISOString(),
+                };
+
+                const messagesByParty = loadChatMessages();
+                const partyMessages = messagesByParty[currentChatPartyId] || [];
+                partyMessages.push(newMessage);
+                messagesByParty[currentChatPartyId] = partyMessages;
+                saveChatMessages(messagesByParty);
+            }
+
+            currentChatMessages.push(newMessage);
+            chatPreviewCache[currentChatPartyId] = newMessage;
+
+            addNotification(
+                "chat",
+                "聊天室新訊息",
+                `${newMessage.senderName || profile.name || currentUser?.name || currentUser?.account || "使用者"} 在「${party.partyName}」傳送新訊息：${text.trim()}`,
+                party.id
+            );
+
+            renderChatMessages();
+            renderChatRoomList();
+            return true;
+        } catch (error) {
+            console.error("傳送聊天室訊息失敗：", error);
+            alert(error.message || "傳送聊天室訊息失敗");
+            return false;
+        }
     }
 
     /* ======================================================
@@ -2406,12 +2470,9 @@
             openJoinedParty();
         });
 
-        partyDetailDeleteBtn?.addEventListener("click", () => {
+        partyDetailDeleteBtn?.addEventListener("click", async () => {
             if (!currentParty || !currentParty.isCanceled) return;
-            const partyId = currentParty.id;
-            deleteCanceledPartyRecord(partyId);
-            currentParty = null;
-            switchView("home");
+            await deleteCanceledPartyRecord(currentParty.id);
         });
 
         partyChatBtn?.addEventListener("click", () => {
@@ -2532,11 +2593,11 @@
             reader.readAsDataURL(file);
         });
 
-        chatForm?.addEventListener("submit", (event) => {
+        chatForm?.addEventListener("submit", async (event) => {
             event.preventDefault();
             const message = chatInput?.value || "";
-            sendChatMessage(message);
-            if (chatInput) chatInput.value = "";
+            const success = await sendChatMessage(message);
+            if (success && chatInput) chatInput.value = "";
         });
 
         chatBackBtn?.addEventListener("click", closeChatRoom);

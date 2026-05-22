@@ -12,6 +12,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const partyRoutes = require("./routes/party.routes");
+const chatRoutes = require("./routes/chat.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,6 +23,8 @@ app.use(express.json());
 app.use("/api", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/parties", partyRoutes);
+app.use("/api/chats", chatRoutes);
+
 //-------------------------- 4. API routes---------------------------
 app.get("/", (req, res) => {
   res.json({
