@@ -65,3 +65,11 @@ CREATE TABLE IF NOT EXISTS ratings (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(party_id, from_user_id, to_user_id)
 );
+//聊天室
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id SERIAL PRIMARY KEY,
+  party_id INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
