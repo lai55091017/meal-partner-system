@@ -10,14 +10,14 @@
  * 5. 其他飯局按 join 後，會把目前登入使用者加入成員列表
  * 5. 成員頁按 評價 後，進入「評價頁」
  * 6. 首頁右下角 + 按鈕，進入「新增飯局」
- * 7. 新增飯局送出後，會存到 localStorage，並在首頁「我的飯局」新增一張卡片
+ * 7. 新增飯局送出後，會寫入 PostgreSQL，並在首頁「我的飯局」新增一張卡片
  * 8. 首頁篩選按鈕可切換 早餐 / 午餐 / 晚餐 / 宵夜
  * 9. 聊天室頁會顯示已建立或已加入的飯局聊天室
- * 10. 每個飯局都有獨立聊天紀錄，訊息會暫存在 localStorage
+ * 10. 每個飯局都有獨立聊天紀錄，訊息會寫入 PostgreSQL
  * 11. 已加入飯局後可以退出，退出後人數與成員列表會自動更新
  * 12. 評價頁星星可以點擊切換 1～5 顆星
  *
- * 目前是前端展示用，資料沒有連接後端資料庫。
+ * 目前已連接 Express API 與 PostgreSQL，localStorage 僅保留登入狀態與少量前端暫存。
  */
 (function () {
     "use strict";
@@ -102,6 +102,16 @@
     const loginAccount = $("#login-account");
     const loginPassword = $("#login-password");
     const loginMessage = $("#login-message");
+    const registerForm = $("#register-form");
+    const registerAccount = $("#register-account");
+    const registerName = $("#register-name");
+    const registerPassword = $("#register-password");
+    const registerPasswordConfirm = $("#register-password-confirm");
+    const registerMessage = $("#register-message");
+    const loginTabBtn = $("#login-tab-btn");
+    const registerTabBtn = $("#register-tab-btn");
+    const authTitle = $("#auth-title");
+    const authSubtitle = $("#auth-subtitle");
 
     const myPartyList = $("#my-party-list");
     const myPartyEmpty = $("#my-party-empty");
@@ -163,19 +173,12 @@
     let receivedRatingsCache = [];
     let ratingSummaryCache = { average: null, count: 0 };
 
-    // 首頁預設示範飯局：讓系統一開始就有一張卡片可操作。
-    const DEFAULT_MY_PARTY = {
-        id: "default-my-party",
-        partyName: "範例飯局",
-        host: "約飯人 先生/小姐",
-        store: "店家名稱",
-        time: "時間",
-        mealType: "午餐",
-        maxMembers: 4,
-        description: "這是預設示範飯局，可用來測試詳情頁與成員頁。",
-        members: [{ id: "default-host", name: "約飯人 先生/小姐", role: "主辦人" }],
-        isMine: true,
-    };
+    // 正式版不再顯示範例飯局 / 範例聊天室；只顯示資料庫或使用者實際建立、加入的資料。
+    const DEMO_PARTY_IDS = new Set(["default-my-party", "other-demo-party"]);
+
+    function isDemoPartyId(partyId) {
+        return DEMO_PARTY_IDS.has(String(partyId));
+    }
 
     const detailFields = {
         partyName: $("#detail-party-name"),
@@ -209,6 +212,26 @@
         } catch (error) {
             currentUser = null;
             localStorage.removeItem(AUTH_KEY);
+        }
+    }
+
+    function removeDemoPartiesFromLocalStorage() {
+        try {
+            const myParties = loadMyParties().filter((party) => !isDemoPartyId(party.id));
+            saveMyParties(myParties);
+
+            const joinedParties = loadJoinedParties();
+            DEMO_PARTY_IDS.forEach((id) => delete joinedParties[id]);
+            saveJoinedParties(joinedParties);
+
+            const chatMessages = loadChatMessages();
+            DEMO_PARTY_IDS.forEach((id) => delete chatMessages[id]);
+            saveChatMessages(chatMessages);
+
+            saveDeletedPartyIds(loadDeletedPartyIds().filter((id) => !isDemoPartyId(id)));
+            saveDeletedChatRoomIds(loadDeletedChatRoomIds().filter((id) => !isDemoPartyId(id)));
+        } catch (error) {
+            console.warn("清除範例資料失敗：", error);
         }
     }
 
@@ -820,6 +843,71 @@
     }
 
 
+    function showAuthMode(mode = "login") {
+        const isRegister = mode === "register";
+
+        if (loginForm) loginForm.hidden = isRegister;
+        if (registerForm) registerForm.hidden = !isRegister;
+
+        loginTabBtn?.classList.toggle("auth-tab--active", !isRegister);
+        registerTabBtn?.classList.toggle("auth-tab--active", isRegister);
+
+        if (loginTabBtn) loginTabBtn.setAttribute("aria-selected", String(!isRegister));
+        if (registerTabBtn) registerTabBtn.setAttribute("aria-selected", String(isRegister));
+
+        if (authTitle) authTitle.textContent = isRegister ? "註冊帳號" : "登入帳號";
+        if (authSubtitle) {
+            authSubtitle.textContent = isRegister
+                ? "建立帳號後即可使用飯局、聊天室與評價功能"
+                : "請輸入帳號與密碼進入系統";
+        }
+
+        if (loginMessage) loginMessage.textContent = "";
+        if (registerMessage) registerMessage.textContent = "";
+
+        if (isRegister) {
+            registerAccount?.focus();
+        } else {
+            loginAccount?.focus();
+        }
+    }
+
+    async function registerNewAccount(account, password, name) {
+        try {
+            if (registerMessage) registerMessage.textContent = "註冊中...";
+            if (registerTabBtn) registerTabBtn.disabled = true;
+
+            const result = await api.register(account, password, name);
+
+            currentUser = result.user;
+            localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser));
+
+            const profile = mapBackendProfileToFrontend(currentUser, []);
+            saveProfileData(profile);
+
+            if (registerForm) registerForm.reset();
+            if (loginForm) loginForm.reset();
+            if (registerMessage) registerMessage.textContent = "";
+            if (loginMessage) loginMessage.textContent = "";
+
+            await loadProfileFromBackend({ silent: true });
+            setProfileEditMode(false);
+            await loadBackendParties();
+            renderChatRoomList();
+            switchView("profile");
+        } catch (error) {
+            console.error("註冊失敗：", error);
+
+            if (registerMessage) {
+                registerMessage.textContent = error.message || "註冊失敗，請確認資料是否正確";
+            } else {
+                alert(error.message || "註冊失敗，請確認資料是否正確");
+            }
+        } finally {
+            if (registerTabBtn) registerTabBtn.disabled = false;
+        }
+    }
+
     async function login(account, password) {
         try {
             if (loginMessage) loginMessage.textContent = "登入中...";
@@ -830,16 +918,20 @@
 
             localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser));
 
-            const profile = mapBackendProfileToFrontend(currentUser, []);
+            const profile = loadProfileData();
+            profile.name = currentUser.name || account;
+            profile.studentId = currentUser.student_id || currentUser.account || account;
+            profile.department = currentUser.department || "";
+            profile.avatar = currentUser.avatar || "";
+            profile.bio = currentUser.bio || "";
+
             saveProfileData(profile);
 
             if (loginForm) loginForm.reset();
             if (loginMessage) loginMessage.textContent = "";
 
-            await loadProfileFromBackend({ silent: true });
+            renderProfileForm();
             setProfileEditMode(false);
-            await loadBackendParties();
-            renderChatRoomList();
             switchView("profile");
         } catch (error) {
             console.error("登入失敗：", error);
@@ -904,12 +996,12 @@
         closeFilterMenu();
     }
 
-    async function openProfileOrLogin() {
+    function openProfileOrLogin() {
         if (isLoggedIn()) {
-            await updateProfileUser();
-            setProfileEditMode(false);
+            updateProfileUser();
             switchView("profile");
         } else {
+            showAuthMode("login");
             switchView("login");
             loginAccount?.focus();
         }
@@ -942,6 +1034,16 @@
     function mapBackendPartyToFrontend(party) {
         const currentUserId = currentUser?.id ? Number(currentUser.id) : null;
         const hostId = party.host_id ? Number(party.host_id) : null;
+        const isMine = currentUserId !== null && hostId === currentUserId;
+        const isCurrentUserMember = party.is_current_user_member === true || party.is_current_user_member === "true";
+        const previewMembers = isCurrentUserMember && !isMine && currentUser?.id
+            ? [{
+                id: String(currentUser.id),
+                name: currentUser.name || currentUser.account || "目前使用者",
+                role: "參加者",
+                avatar: "",
+            }]
+            : [];
 
         return normalizeParty({
             id: String(party.id),
@@ -951,10 +1053,10 @@
             time: party.party_time,
             mealType: party.meal_type,
             maxMembers: Number(party.max_people) || 4,
-            currentPeople: Number(party.current_people) || 1,
+            currentPeople: Number(party.current_people ?? party.currentPeople ?? 0) || 0,
             description: party.description || "尚未填寫飯局介紹。",
-            members: [],
-            isMine: currentUserId !== null && hostId === currentUserId,
+            members: previewMembers,
+            isMine,
             isCanceled: party.status === "cancelled",
             createdAt: party.created_at,
             source: "backend",
@@ -1000,28 +1102,36 @@
 
 
     function normalizeParty(party) {
-        const maxMembers = Math.max(1, Number(party.maxMembers) || 4);
-        const members = Array.isArray(party.members) ? party.members : [];
-        const normalizedMembers = members.length
+        const rawParty = party || {};
+        const maxMembers = Math.max(1, Number(rawParty.maxMembers) || 4);
+        const members = Array.isArray(rawParty.members) ? rawParty.members.map((member) => ({
+            ...member,
+            id: member?.id != null ? String(member.id) : "",
+        })) : [];
+        const fallbackMembers = members.length
             ? members
-            : [{ id: `host-${party.id || Date.now()}`, name: party.host || "約飯人 先生/小姐", role: "主辦人" }];
-        const currentPeople = Number(party.currentPeople ?? party.current_people ?? normalizedMembers.length) || normalizedMembers.length;
+            : [{ id: `host-${rawParty.id || Date.now()}`, name: rawParty.host || "約飯人 先生/小姐", role: "主辦人" }];
+
+        const explicitCurrentPeople = Number(rawParty.currentPeople ?? rawParty.current_people);
+        const currentPeople = Number.isFinite(explicitCurrentPeople) && explicitCurrentPeople > 0
+            ? explicitCurrentPeople
+            : fallbackMembers.length;
 
         return {
-            id: party.id || `party-${Date.now()}`,
-            partyName: party.partyName || "飯局名稱",
-            host: party.host || "約飯人 先生/小姐",
-            store: party.store || "店家名稱",
-            time: party.time || "時間",
-            mealType: inferMealType(party),
+            id: rawParty.id ? String(rawParty.id) : `party-${Date.now()}`,
+            partyName: rawParty.partyName || "飯局名稱",
+            host: rawParty.host || "約飯人 先生/小姐",
+            store: rawParty.store || "店家名稱",
+            time: rawParty.time || "時間",
+            mealType: inferMealType(rawParty),
             maxMembers,
             currentPeople,
-            description: party.description || "尚未填寫飯局介紹。",
-            members: normalizedMembers,
-            isMine: party.isMine === true,
-            isCanceled: party.isCanceled === true || isPartyCanceled(party.id),
-            canceledAt: party.canceledAt || "",
-            createdAt: party.createdAt || new Date().toISOString(),
+            description: rawParty.description || "尚未填寫飯局介紹。",
+            members: fallbackMembers,
+            isMine: rawParty.isMine === true,
+            isCanceled: rawParty.isCanceled === true || isPartyCanceled(rawParty.id),
+            canceledAt: rawParty.canceledAt || "",
+            createdAt: rawParty.createdAt || new Date().toISOString(),
         };
     }
 
@@ -1034,6 +1144,7 @@
             time: card.dataset.time || "時間",
             mealType: card.dataset.mealType || "",
             maxMembers: card.dataset.maxMembers || 4,
+            currentPeople: card.dataset.currentPeople || card.dataset.currentPeopleCount || "",
             description: card.dataset.description || "尚未填寫飯局介紹。",
             members: parseMembersFromCard(card),
             isMine: card.dataset.source === "mine",
@@ -1182,13 +1293,13 @@
     async function deleteCanceledPartyRecord(partyId) {
         if (!partyId) return;
 
-        if (!isLoggedIn()) {
+        if (!isLoggedIn() || !currentUser?.id) {
             alert("請先登入後再刪除飯局紀錄");
             switchView("login");
             return;
         }
 
-        if (!confirm("確定要刪除這筆飯局紀錄嗎？刪除後會從 PostgreSQL 資料庫移除，無法復原。")) return;
+        if (!confirm("確定要刪除這筆已取消飯局紀錄嗎？刪除後會同步從 PostgreSQL 資料庫移除，無法復原。")) return;
 
         try {
             if (isBackendPartyId(partyId)) {
@@ -1204,12 +1315,12 @@
             await loadBackendParties();
             renderHomeParties();
             renderChatRoomList();
-            switchView("home");
+            await renderNotifications();
 
-            alert("飯局紀錄已刪除");
+            alert("飯局紀錄已從資料庫刪除");
         } catch (error) {
-            console.error("刪除飯局失敗：", error);
-            alert(error.message || "刪除飯局失敗");
+            console.error("刪除飯局紀錄失敗：", error);
+            alert(error.message || "刪除飯局紀錄失敗，請確認後端是否啟動");
         }
     }
 
@@ -1267,13 +1378,15 @@
     }
 
     function isCurrentUserMember(party) {
+        const normalizedParty = normalizeParty(party);
         const userId = getCurrentUserId();
-        return (party.members || []).some((member) => String(member.id) === userId);
+        return (normalizedParty.members || []).some((member) => String(member.id) === String(userId));
     }
 
     function getPartyPeopleText(party) {
         const normalizedParty = normalizeParty(party);
-        return `${normalizedParty.currentPeople || (normalizedParty.members || []).length} / ${normalizedParty.maxMembers || 4} 人`;
+        const people = Number(normalizedParty.currentPeople || (normalizedParty.members || []).length || 0);
+        return `${people} / ${normalizedParty.maxMembers || 4} 人`;
     }
 
     // 依照飯局人數與目前使用者身份，回傳卡片與詳情頁要顯示的狀態。
@@ -1285,7 +1398,8 @@
     function getPartyStatus(party) {
         const normalizedParty = normalizeParty(party);
         const userId = getCurrentUserId();
-        const currentMember = (normalizedParty.members || []).find((member) => String(member.id) === userId);
+        const currentMember = (normalizedParty.members || []).find((member) => String(member.id) === String(userId));
+        const currentPeople = Number(normalizedParty.currentPeople || (normalizedParty.members || []).length || 0);
 
         if (normalizedParty.isCanceled === true) {
             return { text: "已取消", key: "canceled" };
@@ -1299,7 +1413,7 @@
             return { text: "已加入", key: "joined" };
         }
 
-        if ((normalizedParty.currentPeople || (normalizedParty.members || []).length) >= normalizedParty.maxMembers) {
+        if (currentPeople >= normalizedParty.maxMembers) {
             return { text: "已額滿", key: "full" };
         }
 
@@ -1353,10 +1467,6 @@
                     currentParty.id
                 );
 
-                const joinedParties = loadJoinedParties();
-                joinedParties[currentParty.id] = currentParty;
-                saveJoinedParties(joinedParties);
-
                 await loadBackendParties();
                 renderHomeParties();
                 renderChatRoomList();
@@ -1366,7 +1476,7 @@
             }
 
             const alreadyJoined = isCurrentUserMember(party);
-            const isFull = party.members.length >= party.maxMembers;
+            const isFull = Number(party.currentPeople || party.members.length) >= party.maxMembers;
 
             if (!alreadyJoined && isFull) {
                 alert("此飯局人數已滿");
@@ -1403,10 +1513,11 @@
     function canCurrentUserLeaveParty(party) {
         if (!party || !isLoggedIn()) return false;
 
+        const normalizedParty = normalizeParty(party);
         const userId = getCurrentUserId();
-        const member = (party.members || []).find((item) => String(item.id) === userId);
+        const member = (normalizedParty.members || []).find((item) => String(item.id) === String(userId));
 
-        return Boolean(member && member.role !== "主辦人" && party.isMine !== true);
+        return Boolean(member && member.role !== "主辦人" && normalizedParty.isMine !== true);
     }
 
     async function leaveCurrentParty() {
@@ -1438,12 +1549,6 @@
 
                 currentParty = await loadBackendPartyDetail(party.id);
 
-                const joinedParties = loadJoinedParties();
-                if (joinedParties[party.id]) {
-                    delete joinedParties[party.id];
-                    saveJoinedParties(joinedParties);
-                }
-
                 await loadBackendParties();
 
                 if (currentChatPartyId === party.id) {
@@ -1459,9 +1564,10 @@
             }
 
             const userId = getCurrentUserId();
-            const leavingMember = (party.members || []).find((member) => String(member.id) === userId);
+            const leavingMember = (party.members || []).find((member) => String(member.id) === String(userId));
 
-            party.members = party.members.filter((member) => String(member.id) !== userId);
+            party.members = party.members.filter((member) => String(member.id) !== String(userId));
+            party.currentPeople = party.members.length;
             currentParty = party;
 
             addNotification(
@@ -1495,7 +1601,7 @@
         if (!party || !isLoggedIn()) return false;
         const normalizedParty = normalizeParty(party);
         const userId = getCurrentUserId();
-        const currentMember = (normalizedParty.members || []).find((member) => String(member.id) === userId);
+        const currentMember = (normalizedParty.members || []).find((member) => String(member.id) === String(userId));
         return (normalizedParty.isMine === true || currentMember?.role === "主辦人") && normalizedParty.isCanceled !== true;
     }
 
@@ -1558,13 +1664,10 @@
         }
     }
 
-    function updateRatingButtonState(party, status, reviewed) {
-        if (!partyRateBtn) return;
-
-        const ended = isPartyEnded(party);
-        partyRateBtn.disabled = status.key === "canceled" || !ended || reviewed;
-        partyRateBtn.textContent = reviewed ? "已評價" : ended ? "評價" : "尚未結束";
-        partyRateBtn.title = reviewed ? "同一場飯局只能評價一次" : ended ? "可以評價本場飯局成員" : getPartyEndHint(party);
+    function canCurrentUserRateParty(party) {
+        if (!party || !isLoggedIn()) return false;
+        const normalizedParty = normalizeParty(party);
+        return normalizedParty.isMine === true || isCurrentUserMember(normalizedParty);
     }
 
     function updateJoinedActionButtons(party) {
@@ -1583,15 +1686,13 @@
         }
 
         if (partyRateBtn) {
-            const normalizedParty = normalizeParty(party);
-            const cachedReviewed = hasReviewedParty(normalizedParty.id);
-            updateRatingButtonState(normalizedParty, status, cachedReviewed);
-
-            if (isBackendPartyId(normalizedParty.id) && currentUser?.id) {
-                refreshRatingReviewedCache(normalizedParty.id).then((reviewed) => {
-                    updateRatingButtonState(normalizedParty, status, reviewed);
-                });
-            }
+            const ended = isPartyEnded(party);
+            const reviewed = hasReviewedParty(party.id);
+            const canRate = canCurrentUserRateParty(party);
+            const hasTargets = getRatingTargets(party).length > 0;
+            partyRateBtn.disabled = status.key === "canceled" || !ended || reviewed || !canRate || !hasTargets;
+            partyRateBtn.textContent = reviewed ? "已評價" : ended ? "評價" : "尚未結束";
+            partyRateBtn.title = !canRate ? "只有本場飯局成員可以評價" : reviewed ? "同一場飯局只能評價一次" : ended ? "可以評價本場飯局成員" : getPartyEndHint(party);
         }
     }
 
@@ -1647,6 +1748,7 @@
         card.dataset.time = normalizedParty.time;
         card.dataset.mealType = normalizedParty.mealType;
         card.dataset.maxMembers = String(normalizedParty.maxMembers);
+        card.dataset.currentPeople = String(normalizedParty.currentPeople || normalizedParty.members.length);
         card.dataset.description = normalizedParty.description;
         card.dataset.canceled = normalizedParty.isCanceled ? "true" : "false";
         card.dataset.canceledAt = normalizedParty.canceledAt || "";
@@ -1704,7 +1806,8 @@
 
     function isPartyAvailable(party) {
         const normalizedParty = normalizeParty(party);
-        return normalizedParty.isCanceled !== true && (normalizedParty.currentPeople || normalizedParty.members.length) < normalizedParty.maxMembers;
+        const currentPeople = Number(normalizedParty.currentPeople || (normalizedParty.members || []).length || 0);
+        return normalizedParty.isCanceled !== true && currentPeople < normalizedParty.maxMembers;
     }
 
     function matchesPartyFilters(party) {
@@ -1738,27 +1841,17 @@
 
         myPartyList.innerHTML = "";
 
-        const savedParties = loadMyParties();
         const backendMyParties = backendParties.filter((party) => party.isMine);
 
-        const sourceParties = backendParties.length > 0
-            ? backendMyParties
-            : savedParties.map(normalizeParty);
-
-        const uniqueIds = new Set();
-        const allParties = sourceParties
-            .filter((party) => !isPartyDeleted(party.id))
-            .filter((party) => {
-                if (uniqueIds.has(party.id)) return false;
-                uniqueIds.add(party.id);
-                return true;
-            });
+        const allParties = backendMyParties
+            .map(normalizeParty)
+            .filter((party) => !isDemoPartyId(party.id) && !isPartyDeleted(party.id));
         const filteredParties = allParties.filter(matchesPartyFilters);
 
         visibleMyPartyCount = filteredParties.length;
 
         filteredParties.forEach((party) => {
-            myPartyList.appendChild(createPartyCard(party, party.id === DEFAULT_MY_PARTY.id));
+            myPartyList.appendChild(createPartyCard(party, false));
         });
 
         if (myPartyEmpty) {
@@ -1774,8 +1867,10 @@
 
     async function loadBackendParties() {
         try {
-            const result = await api.getParties();
-            backendParties = (result.parties || []).map(mapBackendPartyToFrontend);
+            const result = await api.getParties(currentUser?.id || "");
+            backendParties = (result.parties || [])
+                .map(mapBackendPartyToFrontend)
+                .filter((party) => !isDemoPartyId(party.id));
             renderHomeParties();
         } catch (error) {
             console.error("讀取後端飯局失敗：", error);
@@ -1881,32 +1976,25 @@
     function prepareOtherPartyCard() {
         if (!otherPartyCard) return;
 
-        const backendOtherParties = backendParties.filter((party) => !party.isMine);
+        const backendOtherParties = backendParties
+            .filter((party) => !party.isMine && !isDemoPartyId(party.id));
         const backendOtherParty = backendOtherParties[0] || null;
 
-        if (backendParties.length > 0 && !backendOtherParty) {
+        const party = backendOtherParty
+            ? getJoinedParty(backendOtherParty.id) || backendOtherParty
+            : null;
+
+        // 沒有資料庫飯局時，不再 fallback 到 HTML 裡的範例飯局。
+        if (!party || isPartyDeleted(party.id)) {
             otherPartyCard.hidden = true;
             visibleOtherPartyCount = 0;
+
             if (otherPartyEmpty) {
                 otherPartyEmpty.hidden = false;
-                otherPartyEmpty.textContent = "其他飯局沒有符合條件的飯局。";
+                otherPartyEmpty.textContent = "目前沒有其他飯局。";
             }
+
             if (otherPartiesSection) otherPartiesSection.hidden = false;
-            return;
-        }
-
-        const party =
-            (backendOtherParty ? getJoinedParty(backendOtherParty.id) || backendOtherParty : null) ||
-            getJoinedParty(otherPartyCard.dataset.partyId || "other-demo-party") ||
-            getPartyDataFromCard(otherPartyCard);
-
-        if (isPartyDeleted(party.id)) {
-            otherPartyCard.hidden = true;
-            visibleOtherPartyCount = 0;
-            if (otherPartyEmpty) {
-                otherPartyEmpty.hidden = false;
-                otherPartyEmpty.textContent = "其他飯局沒有符合條件的飯局。";
-            }
             return;
         }
 
@@ -1917,6 +2005,7 @@
         otherPartyCard.dataset.time = party.time;
         otherPartyCard.dataset.mealType = party.mealType;
         otherPartyCard.dataset.maxMembers = String(party.maxMembers);
+        otherPartyCard.dataset.currentPeople = String(party.currentPeople || party.members.length);
         otherPartyCard.dataset.description = party.description;
         otherPartyCard.dataset.canceled = party.isCanceled ? "true" : "false";
         otherPartyCard.dataset.canceledAt = party.canceledAt || "";
@@ -1927,7 +2016,6 @@
         otherPartyCard.hidden = !shouldShow;
         visibleOtherPartyCount = shouldShow ? 1 : 0;
 
-        // 其他飯局搜尋或篩選後沒有結果時，顯示區塊內的小提示。
         if (otherPartyEmpty) {
             otherPartyEmpty.hidden = shouldShow;
             otherPartyEmpty.textContent = "其他飯局沒有符合條件的飯局。";
@@ -1938,8 +2026,6 @@
         const grid = otherPartyCard.querySelector(".party-card-grid");
         let labels = $$(".party-label", otherPartyCard);
 
-        // 其他飯局原本是固定 HTML 卡片，這裡補上「餐期」與「目前人數 / 人數上限」。
-        // 如果舊版 HTML 沒有欄位，會自動新增 span，避免畫面少顯示資訊。
         let mealLabel = otherPartyCard.querySelector(".party-label--meal");
         if (!mealLabel && grid) {
             mealLabel = document.createElement("span");
@@ -2054,19 +2140,17 @@
     }
 
     function getAllAccessibleParties() {
-        const savedMyParties = loadMyParties().map(normalizeParty);
         const joinedParties = Object.values(loadJoinedParties()).map(normalizeParty);
         const backendAccessibleParties = backendParties
             .map(normalizeParty)
             .filter((party) => party.isMine === true || isCurrentUserMember(party));
 
-        const localFallback = backendParties.length > 0 ? [] : [normalizeParty(DEFAULT_MY_PARTY), ...savedMyParties];
-        const allParties = [...backendAccessibleParties, ...localFallback, ...joinedParties];
+        const allParties = [...backendAccessibleParties, ...joinedParties];
         const uniqueParties = [];
         const usedIds = new Set();
 
         allParties.forEach((party) => {
-            if (!party?.id || usedIds.has(party.id) || isPartyDeleted(party.id)) return;
+            if (!party?.id || isDemoPartyId(party.id) || usedIds.has(party.id) || isPartyDeleted(party.id)) return;
             usedIds.add(party.id);
             uniqueParties.push(party);
         });
@@ -2213,7 +2297,6 @@
         if (chatRoomPanel) chatRoomPanel.hidden = true;
         renderChatRoomList();
     }
-
 
     function mapBackendChatMessage(message) {
         return {
@@ -2418,10 +2501,11 @@
 
     function getRatingTargets(party) {
         const userId = getCurrentUserId();
-        return (party?.members || []).filter((member) => String(member.id) !== userId);
+        const normalizedParty = normalizeParty(party);
+        return (normalizedParty.members || []).filter((member) => String(member.id) !== String(userId));
     }
 
-    async function renderRatingPage() {
+    function renderRatingPage() {
         if (!ratingList || !ratingSubmitBtn || !ratingMessage) return;
 
         ratingList.innerHTML = "";
@@ -2435,12 +2519,16 @@
 
         const party = normalizeParty(currentParty);
         const targets = getRatingTargets(party);
-        const reviewed = await refreshRatingReviewedCache(party.id);
+        const reviewed = hasReviewedParty(party.id);
+        const canRate = canCurrentUserRateParty(party);
 
         if (ratingPartyTitle) ratingPartyTitle.textContent = `評價「${party.partyName}」`;
 
         if (!isPartyEnded(party)) {
             ratingMessage.textContent = getPartyEndHint(party);
+            ratingSubmitBtn.disabled = true;
+        } else if (!canRate) {
+            ratingMessage.textContent = "只有本場飯局成員可以評價。";
             ratingSubmitBtn.disabled = true;
         } else if (reviewed) {
             ratingMessage.textContent = "你已經評價過這場飯局，同一場飯局只能評價一次。";
@@ -2506,6 +2594,11 @@
         }
 
         const party = normalizeParty(currentParty);
+        if (!canCurrentUserRateParty(party)) {
+            alert("只有本場飯局成員可以送出評價。");
+            return;
+        }
+
         if (!isPartyEnded(party)) {
             alert("飯局結束後才能評價。" + getPartyEndHint(party));
             return;
@@ -2593,11 +2686,26 @@
 
     async function openRatingPage() {
         if (!currentParty) return;
+        if (isBackendPartyId(currentParty.id)) {
+            try {
+                currentParty = await loadBackendPartyDetail(currentParty.id);
+            } catch (error) {
+                console.error("重新讀取飯局成員失敗：", error);
+                alert(error.message || "讀取飯局成員失敗");
+                return;
+            }
+        }
+
         const party = normalizeParty(currentParty);
 
         if (!isLoggedIn() || !currentUser?.id) {
             alert("請先登入後再評價。");
             switchView("login");
+            return;
+        }
+
+        if (!canCurrentUserRateParty(party)) {
+            alert("只有本場飯局成員可以評價。");
             return;
         }
 
@@ -2663,6 +2771,40 @@
             login(account, password);
         });
 
+        loginTabBtn?.addEventListener("click", () => {
+            showAuthMode("login");
+        });
+
+        registerTabBtn?.addEventListener("click", () => {
+            showAuthMode("register");
+        });
+
+        registerForm?.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const account = registerAccount?.value.trim();
+            const name = registerName?.value.trim();
+            const password = registerPassword?.value.trim();
+            const passwordConfirm = registerPasswordConfirm?.value.trim();
+
+            if (!account || !name || !password || !passwordConfirm) {
+                if (registerMessage) registerMessage.textContent = "請完整填寫帳號、姓名與密碼";
+                return;
+            }
+
+            if (password.length < 4) {
+                if (registerMessage) registerMessage.textContent = "密碼至少需要 4 個字元";
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                if (registerMessage) registerMessage.textContent = "兩次輸入的密碼不一致";
+                return;
+            }
+
+            registerNewAccount(account, password, name);
+        });
+
         bindPartyCard(otherPartyCard, { allowJoin: true });
 
         partyJoinBtn?.addEventListener("click", async () => {
@@ -2685,7 +2827,9 @@
 
         partyDetailDeleteBtn?.addEventListener("click", async () => {
             if (!currentParty || !currentParty.isCanceled) return;
-            await deleteCanceledPartyRecord(currentParty.id);
+            const partyId = currentParty.id;
+            await deleteCanceledPartyRecord(partyId);
+            if (!currentParty) switchView("home");
         });
 
         partyChatBtn?.addEventListener("click", () => {
@@ -2788,9 +2932,7 @@
             profileNameInput?.focus();
         });
 
-        profileSaveBtn?.addEventListener("click", async () => {
-            await saveProfileToBackend();
-        });
+        profileSaveBtn?.addEventListener("click", saveProfileToBackend);
 
         profileAvatarFile?.addEventListener("change", () => {
             const file = profileAvatarFile.files?.[0];
@@ -2809,8 +2951,8 @@
         chatForm?.addEventListener("submit", async (event) => {
             event.preventDefault();
             const message = chatInput?.value || "";
-            const success = await sendChatMessage(message);
-            if (success && chatInput) chatInput.value = "";
+            const sent = await sendChatMessage(message);
+            if (sent && chatInput) chatInput.value = "";
         });
 
         chatBackBtn?.addEventListener("click", closeChatRoom);
@@ -2825,12 +2967,13 @@
     /* ======================================================
      * 12. 初始化
      * ====================================================== */
-    async function init() {
+    function init() {
         loadSavedUser();
+        removeDemoPartiesFromLocalStorage();
         bindEvents();
         initFilterMenu();
         initStarRatings();
-        await updateProfileUser({ silent: true });
+        updateProfileUser();
         setProfileEditMode(false);
         prepareOtherPartyCard();
         renderHomeParties();

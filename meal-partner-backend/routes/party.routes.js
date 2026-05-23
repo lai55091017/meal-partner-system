@@ -5,11 +5,15 @@ const router = express.Router();
 
 /**
  * 取得所有飯局
- * GET /api/parties
+ * GET /api/parties?userId=1
+ * userId 可選，用來判斷目前登入者是否已加入該飯局。
  */
 router.get("/", async (req, res) => {
   try {
-    const result = await pool.query(`
+    const userId = req.query.userId ? Number(req.query.userId) : null;
+
+    const result = await pool.query(
+      `
       SELECT
         p.id,
         p.title,
@@ -23,13 +27,21 @@ router.get("/", async (req, res) => {
         u.id AS host_id,
         u.name AS host_name,
         u.account AS host_account,
-        COUNT(pm.user_id) AS current_people
+        COUNT(pm.user_id)::int AS current_people,
+        EXISTS (
+          SELECT 1
+          FROM party_members pm2
+          WHERE pm2.party_id = p.id
+            AND ($1::int IS NOT NULL AND pm2.user_id = $1::int)
+        ) AS is_current_user_member
       FROM parties p
       JOIN users u ON p.host_id = u.id
       LEFT JOIN party_members pm ON p.id = pm.party_id
       GROUP BY p.id, u.id
       ORDER BY p.created_at DESC
-    `);
+      `,
+      [Number.isFinite(userId) ? userId : null]
+    );
 
     res.json({
       parties: result.rows,
@@ -451,8 +463,9 @@ router.post("/:id/cancel", async (req, res) => {
 });
 
 /**
- * 刪除飯局
+ * 真正刪除飯局
  * DELETE /api/parties/:id
+ * 只有主辦人可以刪除。刪除時會同步清除成員、聊天室、評價，通知則保留但解除 party_id。
  */
 router.delete("/:id", async (req, res) => {
   const client = await pool.connect();
@@ -462,9 +475,7 @@ router.delete("/:id", async (req, res) => {
     const { userId } = req.body;
 
     if (!userId) {
-      return res.status(400).json({
-        message: "缺少使用者 id",
-      });
+      return res.status(400).json({ message: "缺少使用者 id" });
     }
 
     await client.query("BEGIN");
@@ -474,56 +485,36 @@ router.delete("/:id", async (req, res) => {
       SELECT id, host_id
       FROM parties
       WHERE id = $1
+      FOR UPDATE
       `,
       [id]
     );
 
     if (partyResult.rows.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({
-        message: "找不到飯局",
-      });
+      return res.status(404).json({ message: "找不到飯局" });
     }
 
     const party = partyResult.rows[0];
 
     if (Number(party.host_id) !== Number(userId)) {
       await client.query("ROLLBACK");
-      return res.status(403).json({
-        message: "只有主辦人可以刪除此飯局",
-      });
+      return res.status(403).json({ message: "只有主辦人可以刪除飯局" });
     }
 
-    await client.query(
-      `
-      DELETE FROM party_members
-      WHERE party_id = $1
-      `,
-      [id]
-    );
-
-    await client.query(
-      `
-      DELETE FROM parties
-      WHERE id = $1
-      `,
-      [id]
-    );
+    await client.query("DELETE FROM chat_messages WHERE party_id = $1", [id]);
+    await client.query("DELETE FROM ratings WHERE party_id = $1", [id]);
+    await client.query("DELETE FROM party_members WHERE party_id = $1", [id]);
+    await client.query("UPDATE notifications SET party_id = NULL WHERE party_id = $1", [id]);
+    await client.query("DELETE FROM parties WHERE id = $1", [id]);
 
     await client.query("COMMIT");
 
-    res.json({
-      message: "飯局已從資料庫刪除",
-    });
+    res.json({ message: "飯局已從資料庫刪除" });
   } catch (error) {
     await client.query("ROLLBACK");
-
     console.error("刪除飯局失敗：", error);
-
-    res.status(500).json({
-      message: "刪除飯局失敗",
-      error: error.message,
-    });
+    res.status(500).json({ message: "刪除飯局失敗", error: error.message });
   } finally {
     client.release();
   }

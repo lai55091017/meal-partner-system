@@ -32,8 +32,9 @@ const api = {
         });
     },
 
-    getParties() {
-        return requestApi("/parties");
+    getParties(userId) {
+        const query = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+        return requestApi(`/parties${query}`);
     },
 
     getParty(id) {
@@ -111,7 +112,6 @@ const api = {
         });
     },
 
-    //message
     getChatMessages(partyId, userId) {
         return requestApi(`/chats/${partyId}/messages?userId=${encodeURIComponent(userId)}`);
     },
@@ -123,7 +123,6 @@ const api = {
         });
     },
 
-    //rating
     submitRatings(ratingData) {
         return requestApi("/ratings", {
             method: "POST",
@@ -142,6 +141,4 @@ const api = {
     checkPartyReviewed(partyId, userId) {
         return requestApi(`/ratings/check?partyId=${encodeURIComponent(partyId)}&userId=${encodeURIComponent(userId)}`);
     },
-
 };
-
