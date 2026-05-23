@@ -145,6 +145,17 @@ router.post("/", async (req, res) => {
 
     await client.query("BEGIN");
 
+    const reviewerUser = await getUserForRegularAction(client, reviewerId);
+    if (!reviewerUser) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "找不到評價者" });
+    }
+
+    if (isAdminUserRow(reviewerUser)) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ message: "管理員帳號為純後台模式，不能送出一般使用者評價" });
+    }
+
     const partyResult = await client.query(
       `
       SELECT id, status

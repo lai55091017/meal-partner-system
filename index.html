@@ -209,7 +209,7 @@
     <!-- 飯局詳情 -->
     <main id="view-party-detail" class="view view--party-detail" aria-label="飯局詳情" hidden>
       <article class="party-detail-card">
-        <div class="party-detail-image" aria-hidden="true"></div>
+        <div class="party-detail-image" id="detail-party-image" aria-hidden="true"></div>
         <div class="party-detail-info party-detail-info--full">
           <h2 class="party-detail-title" id="detail-party-name">飯局名稱</h2>
           <dl class="party-detail-list">
@@ -260,7 +260,7 @@
     <!-- 飯局詳情（已加入） -->
     <main id="view-party-joined" class="view view--party-joined" aria-label="飯局成員" hidden>
       <article class="party-detail-card">
-        <div class="party-detail-image" aria-hidden="true"></div>
+        <div class="party-detail-image" id="joined-party-image" aria-hidden="true"></div>
         <div class="party-detail-info party-detail-info--full">
           <h2 class="party-detail-title" id="joined-party-name">飯局名稱</h2>
           <dl class="party-detail-list">
@@ -373,6 +373,13 @@
             <input type="number" class="create-input" id="create-max-members" name="maxMembers" min="2" max="10"
               placeholder="例如：4" />
           </div>
+          <div class="create-row create-row--file">
+            <label class="create-label" for="create-cover-file">飯局封面</label>
+            <div class="create-file-box">
+              <input type="file" class="create-file-input" id="create-cover-file" name="cover" accept="image/*" />
+              <p class="create-file-hint">可選，支援 jpg / png / webp，展示用會存到後端 uploads 資料夾。</p>
+            </div>
+          </div>
           <div class="create-row create-row--textarea">
             <label class="create-label" for="create-description">飯局介紹</label>
             <textarea class="create-input create-textarea" id="create-description" name="description" rows="4"
@@ -469,6 +476,99 @@
       </article>
     </main>
 
+
+    <!-- 後台管理 -->
+    <main id="view-admin" class="view view--admin" aria-label="後台管理" hidden>
+      <section class="admin-panel" aria-labelledby="admin-title">
+        <div class="admin-header">
+          <div>
+            <h2 id="admin-title" class="admin-title">後台管理</h2>
+            <p class="admin-desc">管理使用者、飯局與聊天室訊息。此頁僅管理員帳號可使用。</p>
+          </div>
+          <button type="button" class="admin-refresh-btn" id="admin-refresh-btn">重新整理</button>
+        </div>
+
+        <p class="admin-message" id="admin-message" aria-live="polite"></p>
+
+        <div class="admin-summary-grid" id="admin-summary-grid" aria-label="系統統計">
+          <article class="admin-summary-card">
+            <span class="admin-summary-label">使用者</span>
+            <strong id="admin-total-users">0</strong>
+          </article>
+          <article class="admin-summary-card">
+            <span class="admin-summary-label">飯局</span>
+            <strong id="admin-total-parties">0</strong>
+          </article>
+          <article class="admin-summary-card">
+            <span class="admin-summary-label">聊天室訊息</span>
+            <strong id="admin-total-messages">0</strong>
+          </article>
+          <article class="admin-summary-card">
+            <span class="admin-summary-label">評價</span>
+            <strong id="admin-total-ratings">0</strong>
+          </article>
+        </div>
+
+        <section class="admin-section" aria-labelledby="admin-users-title">
+          <h3 id="admin-users-title" class="admin-section-title">使用者管理</h3>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>帳號 / 姓名</th>
+                  <th>角色</th>
+                  <th>建立飯局</th>
+                  <th>評分</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="admin-user-list"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="admin-section" aria-labelledby="admin-parties-title">
+          <h3 id="admin-parties-title" class="admin-section-title">飯局管理</h3>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>飯局</th>
+                  <th>主辦人</th>
+                  <th>時間 / 人數</th>
+                  <th>狀態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="admin-party-list"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="admin-section" aria-labelledby="admin-chats-title">
+          <h3 id="admin-chats-title" class="admin-section-title">聊天室訊息管理</h3>
+          <p class="admin-section-desc">顯示最近 100 則訊息，管理員可刪除不當訊息。</p>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>飯局</th>
+                  <th>發送者</th>
+                  <th>訊息</th>
+                  <th>時間</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="admin-chat-list"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
     <button type="button" class="fab" id="fab" aria-label="新增飯局">
       <span aria-hidden="true">+</span>
     </button>
@@ -490,6 +590,16 @@
           </svg>
         </span>
         <span class="nav-label">聊天室</span>
+      </a>
+
+      <a href="#" class="nav-item nav-item--admin" data-nav="admin" hidden>
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+        </span>
+        <span class="nav-label">後台</span>
       </a>
       <a href="#" class="nav-item nav-item--active" data-nav="home" aria-current="page">
         <span class="nav-icon" aria-hidden="true">

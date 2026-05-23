@@ -3,6 +3,23 @@ const pool = require("../db");
 
 const router = express.Router();
 
+async function getUserForRegularAction(userId) {
+  const result = await pool.query(
+    `
+    SELECT id, account, role
+    FROM users
+    WHERE id = $1
+    `,
+    [userId]
+  );
+
+  return result.rows[0] || null;
+}
+
+function isAdminUserRow(user) {
+  return user?.role === "admin" || user?.account === "admin";
+}
+
 let chatTableReady = false;
 
 async function ensureChatTable() {
@@ -50,6 +67,15 @@ router.get("/:partyId/messages", async (req, res) => {
 
     if (!userId) {
       return res.status(400).json({ message: "缺少使用者 id" });
+    }
+
+    const viewer = await getUserForRegularAction(userId);
+    if (!viewer) {
+      return res.status(404).json({ message: "找不到使用者" });
+    }
+
+    if (isAdminUserRow(viewer)) {
+      return res.status(403).json({ message: "管理員帳號為純後台模式，不能使用一般聊天室" });
     }
 
     const party = await checkPartyMember(partyId, userId);
@@ -109,6 +135,15 @@ router.post("/:partyId/messages", async (req, res) => {
 
     if (!message || !String(message).trim()) {
       return res.status(400).json({ message: "訊息內容不能空白" });
+    }
+
+    const sender = await getUserForRegularAction(userId);
+    if (!sender) {
+      return res.status(404).json({ message: "找不到使用者" });
+    }
+
+    if (isAdminUserRow(sender)) {
+      return res.status(403).json({ message: "管理員帳號為純後台模式，不能傳送一般聊天室訊息" });
     }
 
     const party = await checkPartyMember(partyId, userId);

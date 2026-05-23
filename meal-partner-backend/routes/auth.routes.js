@@ -4,9 +4,15 @@ const pool = require("../db");
 const bcrypt = require("bcryptjs");
 
 const router = express.Router();
+
+async function ensureUserRoleColumn() {
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'");
+    await pool.query("UPDATE users SET role = 'admin' WHERE account = 'admin'");
+}
 //註冊 API
 router.post("/register", async (req, res) => {
     try {
+        await ensureUserRoleColumn();
         const { account, password, name } = req.body;
 
         if (!account || !password || !name) {
@@ -38,7 +44,7 @@ router.post("/register", async (req, res) => {
             `
       INSERT INTO users (account, password, name, student_id)
       VALUES ($1, $2, $3, $4)
-      RETURNING id, account, name, student_id, department, avatar, bio, created_at
+      RETURNING id, account, name, student_id, department, avatar, bio, role, created_at
       `,
             [account, hashedPassword, name, account]
         );
@@ -60,6 +66,7 @@ router.post("/register", async (req, res) => {
 //登入 API
 router.post("/login", async (req, res) => {
     try {
+        await ensureUserRoleColumn();
         const { account, password } = req.body;
 
         if (!account || !password) {
@@ -70,7 +77,7 @@ router.post("/login", async (req, res) => {
 
         const result = await pool.query(
             `
-      SELECT id, account, password, name, student_id, department, avatar, bio, created_at
+      SELECT id, account, password, name, student_id, department, avatar, bio, role, created_at
       FROM users
       WHERE account = $1
       `,

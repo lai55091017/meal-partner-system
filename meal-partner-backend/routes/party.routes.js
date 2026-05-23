@@ -3,6 +3,112 @@ const pool = require("../db");
 
 const router = express.Router();
 
+let partyImageColumnReady = false;
+
+async function ensurePartyImageColumn() {
+  if (partyImageColumnReady) return;
+  await pool.query("ALTER TABLE parties ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT ''");
+  partyImageColumnReady = true;
+}
+
+async function getUserForRegularAction(db, userId) {
+  const result = await db.query(
+    `
+    SELECT id, account, role
+    FROM users
+    WHERE id = $1
+    `,
+    [userId]
+  );
+
+  return result.rows[0] || null;
+}
+
+function isAdminUserRow(user) {
+  return user?.role === "admin" || user?.account === "admin";
+}
+
+function parsePartyTime(partyTime) {
+  const text = String(partyTime || "");
+  const match = text.match(/今天\s*(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+
+  const time = new Date();
+  time.setHours(Number(match[1]), Number(match[2]), 0, 0);
+  return time;
+}
+
+function isPartyTimeEnded(partyTime) {
+  const partyDateTime = parsePartyTime(partyTime);
+  return Boolean(partyDateTime && Date.now() >= partyDateTime.getTime());
+}
+
+function normalizePartyStatusForResponse(party) {
+  if (!party) return party;
+  if (party.status === "open" && isPartyTimeEnded(party.party_time)) {
+    return { ...party, status: "ended" };
+  }
+  return party;
+}
+
+async function markPartyEndedIfTimePassed(client, party) {
+  if (!party || party.status !== "open" || !isPartyTimeEnded(party.party_time)) {
+    return party;
+  }
+
+  const result = await client.query(
+    `
+    UPDATE parties
+    SET status = 'ended'
+    WHERE id = $1 AND status = 'open'
+    RETURNING *
+    `,
+    [party.id]
+  );
+
+  return result.rows[0] || { ...party, status: "ended" };
+}
+
+async function markExpiredOpenPartiesEnded() {
+  const result = await pool.query(
+    `
+    SELECT id, party_time
+    FROM parties
+    WHERE status = 'open'
+    `
+  );
+
+  const expiredIds = result.rows
+    .filter((party) => isPartyTimeEnded(party.party_time))
+    .map((party) => party.id);
+
+  if (expiredIds.length > 0) {
+    await pool.query(
+      `
+      UPDATE parties
+      SET status = 'ended'
+      WHERE id = ANY($1::int[]) AND status = 'open'
+      `,
+      [expiredIds]
+    );
+  }
+}
+
+function buildPartyFlowInfo(party) {
+  const normalizedParty = normalizePartyStatusForResponse(party);
+  const currentPeople = Number(normalizedParty.current_people || 0);
+  const maxPeople = Number(normalizedParty.max_people || 0);
+  const isEnded = normalizedParty.status === "ended";
+  const isCancelled = normalizedParty.status === "cancelled";
+  const isFull = !isEnded && !isCancelled && maxPeople > 0 && currentPeople >= maxPeople;
+
+  return {
+    ...normalizedParty,
+    is_full: isFull,
+    can_join: normalizedParty.status === "open" && !isFull,
+  };
+}
+
 /**
  * 取得所有飯局
  * GET /api/parties?userId=1
@@ -10,7 +116,10 @@ const router = express.Router();
  */
 router.get("/", async (req, res) => {
   try {
+    await ensurePartyImageColumn();
     const userId = req.query.userId ? Number(req.query.userId) : null;
+
+    await markExpiredOpenPartiesEnded();
 
     const result = await pool.query(
       `
@@ -22,11 +131,13 @@ router.get("/", async (req, res) => {
         p.party_time,
         p.max_people,
         p.description,
+        p.image_url,
         p.status,
         p.created_at,
         u.id AS host_id,
         u.name AS host_name,
         u.account AS host_account,
+        u.avatar AS host_avatar,
         COUNT(pm.user_id)::int AS current_people,
         EXISTS (
           SELECT 1
@@ -44,7 +155,7 @@ router.get("/", async (req, res) => {
     );
 
     res.json({
-      parties: result.rows,
+      parties: result.rows.map(buildPartyFlowInfo),
     });
   } catch (error) {
     console.error("取得飯局失敗：", error);
@@ -62,6 +173,7 @@ router.get("/", async (req, res) => {
  */
 router.get("/:id", async (req, res) => {
   try {
+    await ensurePartyImageColumn();
     const { id } = req.params;
 
     const partyResult = await pool.query(
@@ -74,6 +186,7 @@ router.get("/:id", async (req, res) => {
         p.party_time,
         p.max_people,
         p.description,
+        p.image_url,
         p.status,
         p.created_at,
         u.id AS host_id,
@@ -81,6 +194,7 @@ router.get("/:id", async (req, res) => {
         u.account AS host_account,
         u.department AS host_department,
         u.bio AS host_bio,
+        u.avatar AS host_avatar,
         COUNT(pm.user_id) AS current_people
       FROM parties p
       JOIN users u ON p.host_id = u.id
@@ -104,6 +218,7 @@ router.get("/:id", async (req, res) => {
         u.name,
         u.account,
         u.department,
+        u.avatar,
         pm.joined_at
       FROM party_members pm
       JOIN users u ON pm.user_id = u.id
@@ -113,8 +228,10 @@ router.get("/:id", async (req, res) => {
       [id]
     );
 
+    const party = await markPartyEndedIfTimePassed(pool, partyResult.rows[0]);
+
     res.json({
-      party: partyResult.rows[0],
+      party: buildPartyFlowInfo(party),
       members: membersResult.rows,
     });
   } catch (error) {
@@ -135,6 +252,7 @@ router.post("/", async (req, res) => {
   const client = await pool.connect();
 
   try {
+    await ensurePartyImageColumn();
     const {
       title,
       hostId,
@@ -143,6 +261,7 @@ router.post("/", async (req, res) => {
       partyTime,
       maxPeople,
       description,
+      imageUrl,
     } = req.body;
 
     if (!title || !hostId || !store || !mealType || !partyTime || !maxPeople) {
@@ -159,23 +278,27 @@ router.post("/", async (req, res) => {
 
     await client.query("BEGIN");
 
-    const userCheck = await client.query(
-      "SELECT id FROM users WHERE id = $1",
-      [hostId]
-    );
+    const hostUser = await getUserForRegularAction(client, hostId);
 
-    if (userCheck.rows.length === 0) {
+    if (!hostUser) {
       await client.query("ROLLBACK");
       return res.status(404).json({
         message: "找不到主辦人",
       });
     }
 
+    if (isAdminUserRow(hostUser)) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({
+        message: "管理員帳號為純後台模式，不能建立飯局",
+      });
+    }
+
     const partyResult = await client.query(
       `
       INSERT INTO parties
-      (title, host_id, store, meal_type, party_time, max_people, description, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'open')
+      (title, host_id, store, meal_type, party_time, max_people, description, image_url, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open')
       RETURNING *
       `,
       [
@@ -186,6 +309,7 @@ router.post("/", async (req, res) => {
         partyTime,
         Number(maxPeople),
         description || "",
+        imageUrl || "",
       ]
     );
 
@@ -238,6 +362,18 @@ router.post("/:id/join", async (req, res) => {
 
     await client.query("BEGIN");
 
+    const joiningUser = await getUserForRegularAction(client, userId);
+    if (!joiningUser) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "找不到使用者" });
+    }
+
+    if (isAdminUserRow(joiningUser)) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ message: "管理員帳號為純後台模式，不能加入飯局" });
+    }
+
+
     // 先鎖定飯局資料，避免多人同時加入導致超過人數上限
     const partyResult = await client.query(
       `
@@ -245,6 +381,7 @@ router.post("/:id/join", async (req, res) => {
         id,
         host_id,
         max_people,
+        party_time,
         status
       FROM parties
       WHERE id = $1
@@ -260,7 +397,8 @@ router.post("/:id/join", async (req, res) => {
       });
     }
 
-    const party = partyResult.rows[0];
+    let party = partyResult.rows[0];
+    party = await markPartyEndedIfTimePassed(client, party);
 
     // 再另外計算目前人數
     const countResult = await client.query(
@@ -277,7 +415,7 @@ router.post("/:id/join", async (req, res) => {
     if (party.status !== "open") {
       await client.query("ROLLBACK");
       return res.status(400).json({
-        message: "此飯局目前無法加入",
+        message: party.status === "ended" ? "此飯局已結束，無法加入" : "此飯局目前無法加入",
       });
     }
 
@@ -343,9 +481,18 @@ router.post("/:id/leave", async (req, res) => {
       });
     }
 
+    const leavingUser = await getUserForRegularAction(pool, userId);
+    if (!leavingUser) {
+      return res.status(404).json({ message: "找不到使用者" });
+    }
+
+    if (isAdminUserRow(leavingUser)) {
+      return res.status(403).json({ message: "管理員帳號為純後台模式，不能退出飯局" });
+    }
+
     const partyResult = await pool.query(
       `
-      SELECT id, host_id, status
+      SELECT id, host_id, status, party_time
       FROM parties
       WHERE id = $1
       `,
@@ -358,7 +505,20 @@ router.post("/:id/leave", async (req, res) => {
       });
     }
 
-    const party = partyResult.rows[0];
+    let party = partyResult.rows[0];
+    party = await markPartyEndedIfTimePassed(pool, party);
+
+    if (party.status === "cancelled") {
+      return res.status(400).json({
+        message: "此飯局已取消，不能退出",
+      });
+    }
+
+    if (party.status === "ended") {
+      return res.status(400).json({
+        message: "此飯局已結束，不能退出",
+      });
+    }
 
     if (Number(party.host_id) === Number(userId)) {
       return res.status(400).json({
@@ -394,6 +554,7 @@ router.post("/:id/leave", async (req, res) => {
   }
 });
 
+
 /**
  * 取消飯局
  * POST /api/parties/:id/cancel
@@ -409,9 +570,18 @@ router.post("/:id/cancel", async (req, res) => {
       });
     }
 
+    const cancelUser = await getUserForRegularAction(pool, userId);
+    if (!cancelUser) {
+      return res.status(404).json({ message: "找不到使用者" });
+    }
+
+    if (isAdminUserRow(cancelUser)) {
+      return res.status(403).json({ message: "管理員帳號為純後台模式，不能使用一般取消飯局功能，請使用後台管理操作" });
+    }
+
     const partyResult = await pool.query(
       `
-      SELECT id, host_id, status
+      SELECT id, host_id, status, party_time
       FROM parties
       WHERE id = $1
       `,
@@ -424,7 +594,8 @@ router.post("/:id/cancel", async (req, res) => {
       });
     }
 
-    const party = partyResult.rows[0];
+    let party = partyResult.rows[0];
+    party = await markPartyEndedIfTimePassed(pool, party);
 
     if (Number(party.host_id) !== Number(userId)) {
       return res.status(403).json({
@@ -435,6 +606,12 @@ router.post("/:id/cancel", async (req, res) => {
     if (party.status === "cancelled") {
       return res.status(400).json({
         message: "此飯局已經取消",
+      });
+    }
+
+    if (party.status === "ended") {
+      return res.status(400).json({
+        message: "此飯局已結束，不能取消"
       });
     }
 
@@ -480,9 +657,21 @@ router.delete("/:id", async (req, res) => {
 
     await client.query("BEGIN");
 
+    const deleteUser = await getUserForRegularAction(client, userId);
+    if (!deleteUser) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "找不到使用者" });
+    }
+
+    if (isAdminUserRow(deleteUser)) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ message: "管理員帳號為純後台模式，不能使用一般刪除飯局功能，請使用後台管理操作" });
+    }
+
+
     const partyResult = await client.query(
       `
-      SELECT id, host_id
+      SELECT id, host_id, status, party_time
       FROM parties
       WHERE id = $1
       FOR UPDATE
@@ -495,11 +684,17 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ message: "找不到飯局" });
     }
 
-    const party = partyResult.rows[0];
+    let party = partyResult.rows[0];
+    party = await markPartyEndedIfTimePassed(client, party);
 
     if (Number(party.host_id) !== Number(userId)) {
       await client.query("ROLLBACK");
       return res.status(403).json({ message: "只有主辦人可以刪除飯局" });
+    }
+
+    if (!["cancelled", "ended"].includes(party.status)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "只有已取消或已結束的飯局可以刪除記錄" });
     }
 
     await client.query("DELETE FROM chat_messages WHERE party_id = $1", [id]);

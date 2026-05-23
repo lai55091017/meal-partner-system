@@ -15,13 +15,18 @@ const partyRoutes = require("./routes/party.routes");
 const chatRoutes = require("./routes/chat.routes");
 const notificationRoutes = require("./routes/notification.routes");
 const ratingRoutes = require("./routes/rating.routes");
+const uploadRoutes = require("./routes/upload.routes");
+const adminRoutes = require("./routes/admin.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 //-------------------------- 3. middleware---------------------------
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "8mb" }));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.use("/api/uploads", uploadRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/ratings", ratingRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api", authRoutes);

@@ -41,6 +41,13 @@ const api = {
         return requestApi(`/parties/${id}`);
     },
 
+    uploadImage(dataUrl, fileName = "image", usage = "common") {
+        return requestApi("/uploads/image", {
+            method: "POST",
+            body: JSON.stringify({ dataUrl, fileName, usage }),
+        });
+    },
+
     createParty(partyData) {
         return requestApi("/parties", {
             method: "POST",
@@ -136,6 +143,51 @@ const api = {
 
     getRatingSummary(userId) {
         return requestApi(`/ratings/summary/${userId}`);
+    },
+
+
+    getAdminSummary(userId) {
+        return requestApi(`/admin/summary?userId=${encodeURIComponent(userId)}`);
+    },
+
+    getAdminUsers(userId) {
+        return requestApi(`/admin/users?userId=${encodeURIComponent(userId)}`);
+    },
+
+    getAdminParties(userId) {
+        return requestApi(`/admin/parties?userId=${encodeURIComponent(userId)}`);
+    },
+
+    getAdminChats(userId) {
+        return requestApi(`/admin/chats?userId=${encodeURIComponent(userId)}`);
+    },
+
+    adminCancelParty(partyId, userId) {
+        return requestApi(`/admin/parties/${partyId}/cancel`, {
+            method: "POST",
+            body: JSON.stringify({ userId }),
+        });
+    },
+
+    adminDeleteParty(partyId, userId) {
+        return requestApi(`/admin/parties/${partyId}`, {
+            method: "DELETE",
+            body: JSON.stringify({ userId }),
+        });
+    },
+
+    adminDeleteUser(targetUserId, userId) {
+        return requestApi(`/admin/users/${targetUserId}`, {
+            method: "DELETE",
+            body: JSON.stringify({ userId }),
+        });
+    },
+
+    adminDeleteChatMessage(messageId, userId) {
+        return requestApi(`/admin/chats/${messageId}`, {
+            method: "DELETE",
+            body: JSON.stringify({ userId }),
+        });
     },
 
     checkPartyReviewed(partyId, userId) {

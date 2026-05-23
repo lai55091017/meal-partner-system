@@ -52,6 +52,7 @@
         rating: "view-rating",
         create: "view-create",
         profile: "view-profile",
+        admin: "view-admin",
     };
 
     const PAGE_TITLES = {
@@ -64,6 +65,7 @@
         rating: "評價 · 飯局系統",
         create: "新增飯局 · 飯局系統",
         profile: "個人帳號 · 飯局系統",
+        admin: "後台管理 · 飯局系統",
     };
 
     // 底部導覽列對應的主要頁面。
@@ -72,6 +74,7 @@
         notifications: "notifications",
         chat: "chat",
         profile: "profile",
+        admin: "admin",
     };
 
     // 這些頁面屬於首頁流程，所以底部導覽列維持 home 亮起。
@@ -142,6 +145,9 @@
     const profileAvatarFile = $("#profile-avatar-file");
     const profileAvatarPreview = $("#profile-avatar-preview");
     const profileAvatarIcon = $(".profile-avatar-icon");
+    const createCoverFile = $("#create-cover-file");
+    const detailPartyImage = $("#detail-party-image");
+    const joinedPartyImage = $("#joined-party-image");
     const profileNameInput = $("#profile-name-input");
     const profileStudentId = $("#profile-student-id");
     const profileDepartment = $("#profile-department");
@@ -156,6 +162,15 @@
     const profileAverageRating = $("#profile-average-rating");
     const profileReviewList = $("#profile-review-list");
     const profileReviewEmpty = $("#profile-review-empty");
+    const adminRefreshBtn = $("#admin-refresh-btn");
+    const adminMessage = $("#admin-message");
+    const adminTotalUsers = $("#admin-total-users");
+    const adminTotalParties = $("#admin-total-parties");
+    const adminTotalMessages = $("#admin-total-messages");
+    const adminTotalRatings = $("#admin-total-ratings");
+    const adminUserList = $("#admin-user-list");
+    const adminPartyList = $("#admin-party-list");
+    const adminChatList = $("#admin-chat-list");
 
     /* ======================================================
      * 4. 頁面狀態資料
@@ -172,6 +187,10 @@
     let ratingReviewedCache = new Set();
     let receivedRatingsCache = [];
     let ratingSummaryCache = { average: null, count: 0 };
+    let partyHostProfileCache = {};
+    let pendingProfileAvatarFile = null;
+    let pendingProfileAvatarPreview = "";
+    let isSavingProfile = false;
 
     // 正式版不再顯示範例飯局 / 範例聊天室；只顯示資料庫或使用者實際建立、加入的資料。
     const DEMO_PARTY_IDS = new Set(["default-my-party", "other-demo-party"]);
@@ -239,6 +258,32 @@
         return currentUser !== null;
     }
 
+    function isAdminUser(user = currentUser) {
+        return Boolean(user && (user.role === "admin" || user.account === "admin"));
+    }
+
+    function isAdminOnlyAllowedView(viewKey) {
+        return ["admin", "profile", "login"].includes(viewKey);
+    }
+
+    function updateAdminNavVisibility() {
+        const isAdmin = isAdminUser();
+
+        navItems.forEach((nav) => {
+            const navKey = nav.dataset.nav;
+
+            if (isAdmin) {
+                // 管理員採純後台模式：只保留「後台」與「個人帳號」。
+                nav.hidden = !(navKey === "admin" || navKey === "profile");
+            } else {
+                // 一般使用者不可看見後台入口。
+                nav.hidden = navKey === "admin";
+            }
+        });
+
+        if (fab) fab.hidden = isAdmin;
+    }
+
     function getCurrentUserId() {
         return currentUser?.id != null ? String(currentUser.id) : currentUser?.account || "guest-user";
     }
@@ -304,6 +349,7 @@
         };
 
         localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser));
+        updateAdminNavVisibility();
     }
 
     async function loadProfileFromBackend(options = {}) {
@@ -345,7 +391,15 @@
         };
     }
 
-    async function saveProfileToBackend() {
+    async function saveProfileToBackend(event) {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+
+        if (isSavingProfile) return;
+
+        const viewBeforeSave = app?.dataset?.view || "profile";
+        const shouldStayOnProfile = viewBeforeSave === "profile";
+
         if (!isLoggedIn() || !currentUser?.id) {
             alert("請先登入後再儲存個人資料");
             switchView("login");
@@ -353,11 +407,20 @@
         }
 
         const profile = collectProfileData();
+        const hasPendingAvatar = Boolean(pendingProfileAvatarFile);
 
         try {
+            isSavingProfile = true;
+
             if (profileSaveBtn) {
                 profileSaveBtn.disabled = true;
-                profileSaveBtn.textContent = "儲存中...";
+                profileSaveBtn.textContent = hasPendingAvatar ? "上傳中..." : "儲存中...";
+            }
+
+            // 選擇大頭貼時只先預覽；只有按下「儲存」才上傳圖片並寫入 users.avatar。
+            if (hasPendingAvatar) {
+                profile.avatar = await uploadImageFile(pendingProfileAvatarFile, "avatar");
+                if (profileSaveBtn) profileSaveBtn.textContent = "儲存中...";
             }
 
             const profileResult = await api.updateUserProfile(currentUser.id, buildProfilePayload(profile));
@@ -376,16 +439,52 @@
                 ]
             );
 
+            pendingProfileAvatarFile = null;
+            pendingProfileAvatarPreview = "";
+            if (profileAvatarFile) profileAvatarFile.value = "";
+
             saveProfileData(updatedProfile);
             renderProfileForm();
             setProfileEditMode(false);
             updateHostPreview(updatedProfile);
 
+            if (currentUser?.id) {
+                delete partyHostProfileCache[String(currentUser.id)];
+            }
+
+            if (currentParty?.id && isBackendPartyId(currentParty.id)) {
+                currentParty = await loadBackendPartyDetail(currentParty.id);
+                renderJoinedMembers(currentParty);
+                updateJoinedActionButtons(currentParty);
+            }
+
+            await loadBackendParties();
+            renderChatRoomList();
+
+            // loadBackendParties 會重繪首頁資料，但不應該改變目前頁面。
+            // 尤其是編輯大頭貼後，使用者應停留在個人帳號頁。
+            if (shouldStayOnProfile) {
+                switchView("profile");
+            }
+
             alert("個人資料已儲存到資料庫");
+
+            if (shouldStayOnProfile) {
+                switchView("profile");
+                setTimeout(() => {
+                    if (app?.dataset?.view !== "profile") switchView("profile");
+                }, 0);
+            }
         } catch (error) {
             console.error("儲存個人資料失敗：", error);
             alert(error.message || "儲存個人資料失敗，請確認後端是否啟動");
+
+            if (shouldStayOnProfile) {
+                switchView("profile");
+            }
         } finally {
+            isSavingProfile = false;
+
             if (profileSaveBtn) {
                 profileSaveBtn.disabled = false;
                 profileSaveBtn.textContent = "儲存";
@@ -523,12 +622,12 @@
 
         const end = new Date();
         end.setHours(Number(match[1]), Number(match[2]), 0, 0);
-        end.setMinutes(end.getMinutes() + 60);
         return end;
     }
 
     function isPartyEnded(party) {
         if (!party || party.isCanceled) return false;
+        if (party.isEnded === true || party.status === "ended") return true;
         const endTime = parsePartyEndTime(party);
         if (!endTime) return false;
         return Date.now() >= endTime.getTime();
@@ -756,6 +855,91 @@
         return $$(`input[name="${name}"]:checked`, profileForm).map((input) => input.value);
     }
 
+    function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.addEventListener("load", () => resolve(String(reader.result || "")));
+            reader.addEventListener("error", () => reject(new Error("圖片讀取失敗")));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function validateImageFile(file) {
+        if (!file) return "";
+        if (!file.type || !file.type.startsWith("image/")) return "請選擇圖片檔案";
+        if (file.size > 4 * 1024 * 1024) return "圖片大小不能超過 4MB";
+        return "";
+    }
+
+    async function uploadImageFile(file, usage) {
+        if (!file) return "";
+        const errorMessage = validateImageFile(file);
+        if (errorMessage) throw new Error(errorMessage);
+        const dataUrl = await fileToDataUrl(file);
+        const result = await api.uploadImage(dataUrl, file.name || "image", usage);
+
+        // 資料庫優先儲存相對路徑，避免之後換電腦或換網址時圖片失效。
+        return result.path || result.url || "";
+    }
+
+    function getApiOrigin() {
+        return String(API_BASE_URL || "").replace(/\/api\/?$/, "");
+    }
+
+    function getImageUrl(imageUrl) {
+        const value = String(imageUrl || "").trim();
+        if (!value) return "";
+        if (/^(https?:|data:|blob:)/i.test(value)) return value;
+        if (value.startsWith("/")) return `${getApiOrigin()}${value}`;
+        return `${getApiOrigin()}/${value}`;
+    }
+
+    async function syncAvatarToBackend(avatarUrl) {
+        if (!currentUser?.id) return null;
+
+        const profile = collectProfileData();
+        profile.avatar = avatarUrl || "";
+
+        const result = await api.updateUserProfile(currentUser.id, buildProfilePayload(profile));
+        updateCurrentUserStorage(result.user);
+
+        const updatedProfile = {
+            ...profile,
+            name: result.user?.name || profile.name,
+            studentId: result.user?.student_id || result.user?.account || profile.studentId,
+            department: result.user?.department || profile.department,
+            avatar: result.user?.avatar || avatarUrl || "",
+            bio: result.user?.bio || profile.bio,
+        };
+
+        saveProfileData(updatedProfile);
+
+        if (currentUser?.id) {
+            delete partyHostProfileCache[String(currentUser.id)];
+        }
+
+        return updatedProfile;
+    }
+
+    function renderImageBox(box, imageUrl, fallbackText = "飯") {
+        if (!box) return;
+        box.innerHTML = "";
+        box.classList.toggle("has-image", Boolean(imageUrl));
+
+        if (imageUrl) {
+            const img = document.createElement("img");
+            img.src = getImageUrl(imageUrl);
+            img.alt = "";
+            box.appendChild(img);
+            return;
+        }
+
+        const placeholder = document.createElement("span");
+        placeholder.className = "image-placeholder-text";
+        placeholder.textContent = fallbackText;
+        box.appendChild(placeholder);
+    }
+
     function renderProfileForm() {
         const profile = loadProfileData();
 
@@ -768,8 +952,9 @@
         setCheckedValues("cuisine", profile.cuisine || []);
 
         if (profileAvatarPreview && profileAvatarIcon) {
-            if (profile.avatar) {
-                profileAvatarPreview.src = profile.avatar;
+            const avatarPreviewUrl = pendingProfileAvatarPreview || getImageUrl(profile.avatar);
+            if (avatarPreviewUrl) {
+                profileAvatarPreview.src = avatarPreviewUrl;
                 profileAvatarPreview.hidden = false;
                 profileAvatarIcon.hidden = true;
             } else {
@@ -828,6 +1013,62 @@
         }
     }
 
+    function applyPartyHostPreview(profile = {}) {
+        const preferences = [...(profile.diet || []), ...(profile.cuisine || [])];
+
+        if (hostPreviewName) hostPreviewName.textContent = profile.name || "約飯人 先生/小姐";
+        if (hostPreviewDiet) {
+            hostPreviewDiet.textContent = preferences.length
+                ? preferences.join("・")
+                : (profile.department ? `系所：${profile.department}` : "飲食偏好尚未填寫");
+        }
+        if (hostPreviewBio) {
+            hostPreviewBio.textContent = profile.bio || "這位約飯人尚未填寫個人介紹。";
+        }
+    }
+
+    async function renderPartyHostPreview(party) {
+        if (!party) {
+            applyPartyHostPreview({});
+            return;
+        }
+
+        const normalizedParty = normalizeParty(party);
+        const fallbackProfile = {
+            name: normalizedParty.host,
+            department: normalizedParty.hostDepartment,
+            diet: normalizedParty.hostDiet,
+            cuisine: normalizedParty.hostCuisine,
+            bio: normalizedParty.hostBio,
+        };
+
+        applyPartyHostPreview(fallbackProfile);
+
+        const hostId = normalizedParty.hostId;
+        if (!hostId || !/^\d+$/.test(String(hostId))) return;
+
+        try {
+            if (!partyHostProfileCache[hostId]) {
+                const result = await api.getUserProfile(hostId);
+                const groupedPreferences = groupPreferences(result.preferences || []);
+                partyHostProfileCache[hostId] = {
+                    name: result.user?.name || fallbackProfile.name,
+                    department: result.user?.department || fallbackProfile.department,
+                    diet: groupedPreferences.diet,
+                    cuisine: groupedPreferences.cuisine,
+                    bio: result.user?.bio || fallbackProfile.bio,
+                    avatar: result.user?.avatar || fallbackProfile.avatar || "",
+                };
+            }
+
+            if (currentParty && String(currentParty.hostId) === String(hostId)) {
+                applyPartyHostPreview(partyHostProfileCache[hostId]);
+            }
+        } catch (error) {
+            console.warn("讀取飯局房主資料失敗：", error);
+        }
+    }
+
     async function updateProfileUser(options = {}) {
         const profile = loadProfileData();
 
@@ -881,6 +1122,7 @@
 
             currentUser = result.user;
             localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser));
+            updateAdminNavVisibility();
 
             const profile = mapBackendProfileToFrontend(currentUser, []);
             saveProfileData(profile);
@@ -894,7 +1136,8 @@
             setProfileEditMode(false);
             await loadBackendParties();
             renderChatRoomList();
-            switchView("profile");
+            switchView(isAdminUser() ? "admin" : "profile");
+            if (isAdminUser()) loadAdminDashboard();
         } catch (error) {
             console.error("註冊失敗：", error);
 
@@ -917,6 +1160,7 @@
             currentUser = result.user;
 
             localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser));
+            updateAdminNavVisibility();
 
             const profile = loadProfileData();
             profile.name = currentUser.name || account;
@@ -932,7 +1176,8 @@
 
             renderProfileForm();
             setProfileEditMode(false);
-            switchView("profile");
+            switchView(isAdminUser() ? "admin" : "profile");
+            if (isAdminUser()) loadAdminDashboard();
         } catch (error) {
             console.error("登入失敗：", error);
 
@@ -947,6 +1192,7 @@
     function logout() {
         localStorage.removeItem(AUTH_KEY);
         currentUser = null;
+        updateAdminNavVisibility();
         renderProfileForm();
         renderProfileRatingSummary();
         setProfileEditMode(false);
@@ -973,7 +1219,13 @@
     function switchView(viewKey) {
         if (!app) return;
 
-        const safeViewKey = views[viewKey] ? viewKey : "home";
+        let safeViewKey = views[viewKey] ? viewKey : "home";
+
+        // 管理員採純後台模式，不能進入一般使用者流程頁面。
+        if (isAdminUser() && !isAdminOnlyAllowedView(safeViewKey)) {
+            safeViewKey = "admin";
+        }
+
         const targetView = views[safeViewKey];
 
         Object.values(views).forEach((view) => {
@@ -993,6 +1245,7 @@
             setActiveNav(OVERLAY_VIEWS.includes(safeViewKey) ? "home" : safeViewKey);
         }
 
+        updateAdminNavVisibility();
         closeFilterMenu();
     }
 
@@ -1041,7 +1294,7 @@
                 id: String(currentUser.id),
                 name: currentUser.name || currentUser.account || "目前使用者",
                 role: "參加者",
-                avatar: "",
+                avatar: currentUser.avatar || loadProfileData().avatar || "",
             }]
             : [];
 
@@ -1049,15 +1302,25 @@
             id: String(party.id),
             partyName: party.title,
             host: party.host_name || "主辦人",
+            hostId: party.host_id,
+            hostAccount: party.host_account || "",
+            hostDepartment: party.host_department || "",
+            hostBio: party.host_bio || "",
+            hostAvatar: party.host_avatar || "",
             store: party.store,
             time: party.party_time,
             mealType: party.meal_type,
             maxMembers: Number(party.max_people) || 4,
             currentPeople: Number(party.current_people ?? party.currentPeople ?? 0) || 0,
             description: party.description || "尚未填寫飯局介紹。",
+            imageUrl: party.image_url || party.imageUrl || "",
             members: previewMembers,
             isMine,
+            isEnded: party.status === "ended",
             isCanceled: party.status === "cancelled",
+            isFull: party.is_full === true,
+            canJoin: party.can_join !== false,
+            status: party.status || "open",
             createdAt: party.created_at,
             source: "backend",
         });
@@ -1071,7 +1334,7 @@
             id: String(member.id),
             name: member.name || member.account || "使用者",
             role: Number(member.id) === Number(party.host_id) ? "主辦人" : "參加者",
-            avatar: "",
+            avatar: member.avatar || "",
             department: member.department || "",
         }));
 
@@ -1081,7 +1344,7 @@
                     id: String(party.host_id),
                     name: party.host_name || "主辦人",
                     role: "主辦人",
-                    avatar: "",
+                    avatar: party.host_avatar || "",
                     department: party.host_department || "",
                 },
             ];
@@ -1110,7 +1373,12 @@
         })) : [];
         const fallbackMembers = members.length
             ? members
-            : [{ id: `host-${rawParty.id || Date.now()}`, name: rawParty.host || "約飯人 先生/小姐", role: "主辦人" }];
+            : [{
+                id: rawParty.hostId != null ? String(rawParty.hostId) : `host-${rawParty.id || Date.now()}`,
+                name: rawParty.host || "約飯人 先生/小姐",
+                role: "主辦人",
+                avatar: rawParty.hostAvatar || rawParty.host_avatar || "",
+            }];
 
         const explicitCurrentPeople = Number(rawParty.currentPeople ?? rawParty.current_people);
         const currentPeople = Number.isFinite(explicitCurrentPeople) && explicitCurrentPeople > 0
@@ -1121,15 +1389,27 @@
             id: rawParty.id ? String(rawParty.id) : `party-${Date.now()}`,
             partyName: rawParty.partyName || "飯局名稱",
             host: rawParty.host || "約飯人 先生/小姐",
+            hostId: rawParty.hostId != null ? String(rawParty.hostId) : (rawParty.host_id != null ? String(rawParty.host_id) : ""),
+            hostAccount: rawParty.hostAccount || rawParty.host_account || "",
+            hostDepartment: rawParty.hostDepartment || rawParty.host_department || "",
+            hostBio: rawParty.hostBio || rawParty.host_bio || "",
+            hostAvatar: rawParty.hostAvatar || rawParty.host_avatar || "",
+            hostDiet: Array.isArray(rawParty.hostDiet) ? rawParty.hostDiet : [],
+            hostCuisine: Array.isArray(rawParty.hostCuisine) ? rawParty.hostCuisine : [],
             store: rawParty.store || "店家名稱",
             time: rawParty.time || "時間",
             mealType: inferMealType(rawParty),
             maxMembers,
             currentPeople,
             description: rawParty.description || "尚未填寫飯局介紹。",
+            imageUrl: rawParty.imageUrl || rawParty.image_url || "",
             members: fallbackMembers,
             isMine: rawParty.isMine === true,
-            isCanceled: rawParty.isCanceled === true || isPartyCanceled(rawParty.id),
+            isEnded: rawParty.isEnded === true || rawParty.status === "ended",
+            isCanceled: rawParty.isCanceled === true || rawParty.status === "cancelled" || isPartyCanceled(rawParty.id),
+            isFull: rawParty.isFull === true || rawParty.is_full === true,
+            canJoin: rawParty.canJoin !== false && rawParty.can_join !== false,
+            status: rawParty.status || (rawParty.isEnded === true ? "ended" : rawParty.isCanceled === true ? "cancelled" : "open"),
             canceledAt: rawParty.canceledAt || "",
             createdAt: rawParty.createdAt || new Date().toISOString(),
         };
@@ -1140,6 +1420,12 @@
             id: card.dataset.partyId || card.dataset.id,
             partyName: card.dataset.partyName || "飯局名稱",
             host: card.dataset.host || "約飯人 先生/小姐",
+            hostId: card.dataset.hostId || "",
+            hostAccount: card.dataset.hostAccount || "",
+            hostDepartment: card.dataset.hostDepartment || "",
+            hostBio: card.dataset.hostBio || "",
+            hostAvatar: card.dataset.hostAvatar || "",
+            imageUrl: card.dataset.imageUrl || "",
             store: card.dataset.store || "店家名稱",
             time: card.dataset.time || "時間",
             mealType: card.dataset.mealType || "",
@@ -1148,7 +1434,11 @@
             description: card.dataset.description || "尚未填寫飯局介紹。",
             members: parseMembersFromCard(card),
             isMine: card.dataset.source === "mine",
-            isCanceled: card.dataset.canceled === "true",
+            isEnded: card.dataset.ended === "true" || card.dataset.status === "ended",
+            isCanceled: card.dataset.canceled === "true" || card.dataset.status === "cancelled",
+            isFull: card.dataset.full === "true",
+            canJoin: card.dataset.canJoin !== "false",
+            status: card.dataset.status || "open",
             canceledAt: card.dataset.canceledAt || "",
         });
     }
@@ -1170,6 +1460,7 @@
             mealType: $("#create-meal-type")?.value || "午餐",
             maxMembers: $("#create-max-members")?.value.trim() || 4,
             description: $("#create-description")?.value.trim() || "尚未填寫飯局介紹。",
+            imageUrl: "",
             members: [hostMember],
             isMine: true,
             createdAt: new Date().toISOString(),
@@ -1186,6 +1477,7 @@
             partyTime: $("#create-time")?.value || "",
             maxPeople: Number($("#create-max-members")?.value || 0),
             description: $("#create-description")?.value.trim() || "",
+            imageUrl: "",
         };
     }
 
@@ -1290,7 +1582,7 @@
         }
     }
 
-    async function deleteCanceledPartyRecord(partyId) {
+    async function deleteClosedPartyRecord(partyId) {
         if (!partyId) return;
 
         if (!isLoggedIn() || !currentUser?.id) {
@@ -1299,7 +1591,7 @@
             return;
         }
 
-        if (!confirm("確定要刪除這筆已取消飯局紀錄嗎？刪除後會同步從 PostgreSQL 資料庫移除，無法復原。")) return;
+        if (!confirm("確定要刪除這筆已取消或已結束的飯局紀錄嗎？刪除後會同步從 PostgreSQL 資料庫移除，無法復原。")) return;
 
         try {
             if (isBackendPartyId(partyId)) {
@@ -1405,6 +1697,10 @@
             return { text: "已取消", key: "canceled" };
         }
 
+        if (isPartyEnded(normalizedParty)) {
+            return { text: "已結束", key: "ended" };
+        }
+
         if (normalizedParty.isMine === true || currentMember?.role === "主辦人") {
             return { text: "我是主辦人", key: "owner" };
         }
@@ -1413,7 +1709,7 @@
             return { text: "已加入", key: "joined" };
         }
 
-        if (currentPeople >= normalizedParty.maxMembers) {
+        if (normalizedParty.isFull === true || currentPeople >= normalizedParty.maxMembers) {
             return { text: "已額滿", key: "full" };
         }
 
@@ -1433,6 +1729,7 @@
             "party-status--joined",
             "party-status--full",
             "party-status--owner",
+            "party-status--ended",
             "party-status--canceled"
         );
         element.classList.add(`party-status--${status.key}`);
@@ -1440,6 +1737,12 @@
 
     async function joinCurrentParty() {
         if (!currentParty) return null;
+
+        if (isAdminUser()) {
+            alert("管理員帳號為純後台模式，不能加入飯局。");
+            switchView("admin");
+            return normalizeParty(currentParty);
+        }
 
         if (!isLoggedIn()) {
             alert("請先登入後再加入飯局");
@@ -1451,6 +1754,11 @@
 
         if (party.isCanceled) {
             alert("此飯局已取消，無法加入。");
+            return party;
+        }
+
+        if (isPartyEnded(party)) {
+            alert("此飯局已結束，無法加入。");
             return party;
         }
 
@@ -1511,13 +1819,20 @@
     // 判斷目前登入者是否可以退出這場飯局。
     // 主辦人不能用「退出」移除自己，避免飯局沒有主辦人。
     function canCurrentUserLeaveParty(party) {
+        if (isAdminUser()) return false;
         if (!party || !isLoggedIn()) return false;
 
         const normalizedParty = normalizeParty(party);
         const userId = getCurrentUserId();
         const member = (normalizedParty.members || []).find((item) => String(item.id) === String(userId));
 
-        return Boolean(member && member.role !== "主辦人" && normalizedParty.isMine !== true);
+        return Boolean(
+            member &&
+            member.role !== "主辦人" &&
+            normalizedParty.isMine !== true &&
+            normalizedParty.isCanceled !== true &&
+            !isPartyEnded(normalizedParty)
+        );
     }
 
     async function leaveCurrentParty() {
@@ -1598,11 +1913,23 @@
         }
     }
     function canCurrentUserCancelParty(party) {
+        if (isAdminUser()) return false;
         if (!party || !isLoggedIn()) return false;
         const normalizedParty = normalizeParty(party);
         const userId = getCurrentUserId();
         const currentMember = (normalizedParty.members || []).find((member) => String(member.id) === String(userId));
-        return (normalizedParty.isMine === true || currentMember?.role === "主辦人") && normalizedParty.isCanceled !== true;
+        return (normalizedParty.isMine === true || currentMember?.role === "主辦人") && normalizedParty.isCanceled !== true && !isPartyEnded(normalizedParty);
+    }
+
+    function canCurrentUserDeleteClosedParty(party) {
+        if (isAdminUser()) return false;
+        if (!party || !isLoggedIn()) return false;
+        const normalizedParty = normalizeParty(party);
+        const status = getPartyStatus(normalizedParty);
+        const userId = getCurrentUserId();
+        const currentMember = (normalizedParty.members || []).find((member) => String(member.id) === String(userId));
+        const isOwner = normalizedParty.isMine === true || currentMember?.role === "主辦人";
+        return isOwner && (status.key === "canceled" || status.key === "ended");
     }
 
     async function cancelCurrentParty() {
@@ -1665,6 +1992,7 @@
     }
 
     function canCurrentUserRateParty(party) {
+        if (isAdminUser()) return false;
         if (!party || !isLoggedIn()) return false;
         const normalizedParty = normalizeParty(party);
         return normalizedParty.isMine === true || isCurrentUserMember(normalizedParty);
@@ -1673,9 +2001,18 @@
     function updateJoinedActionButtons(party) {
         const status = getPartyStatus(party);
 
-        if (partyLeaveBtn) {
-            partyLeaveBtn.hidden = status.key === "canceled" || !canCurrentUserLeaveParty(party);
+        if (isAdminUser()) {
+            if (partyLeaveBtn) partyLeaveBtn.hidden = true;
+            if (partyCancelBtn) partyCancelBtn.hidden = true;
+            if (partyChatBtn) partyChatBtn.hidden = true;
+            if (partyRateBtn) partyRateBtn.hidden = true;
+            return;
         }
+
+        if (partyLeaveBtn) {
+            partyLeaveBtn.hidden = status.key === "canceled" || status.key === "ended" || !canCurrentUserLeaveParty(party);
+        }
+
 
         if (partyCancelBtn) {
             partyCancelBtn.hidden = !canCurrentUserCancelParty(party);
@@ -1712,7 +2049,7 @@
 
             if (member.avatar) {
                 const img = document.createElement("img");
-                img.src = member.avatar;
+                img.src = getImageUrl(member.avatar);
                 img.alt = "";
                 avatar.appendChild(img);
             } else {
@@ -1744,13 +2081,23 @@
         card.dataset.partyId = normalizedParty.id;
         card.dataset.partyName = normalizedParty.partyName;
         card.dataset.host = normalizedParty.host;
+        card.dataset.hostId = normalizedParty.hostId || "";
+        card.dataset.hostAccount = normalizedParty.hostAccount || "";
+        card.dataset.hostDepartment = normalizedParty.hostDepartment || "";
+        card.dataset.hostBio = normalizedParty.hostBio || "";
+        card.dataset.hostAvatar = normalizedParty.hostAvatar || "";
+        card.dataset.imageUrl = normalizedParty.imageUrl || "";
         card.dataset.store = normalizedParty.store;
         card.dataset.time = normalizedParty.time;
         card.dataset.mealType = normalizedParty.mealType;
         card.dataset.maxMembers = String(normalizedParty.maxMembers);
         card.dataset.currentPeople = String(normalizedParty.currentPeople || normalizedParty.members.length);
         card.dataset.description = normalizedParty.description;
+        card.dataset.ended = isPartyEnded(normalizedParty) ? "true" : "false";
         card.dataset.canceled = normalizedParty.isCanceled ? "true" : "false";
+        card.dataset.full = normalizedParty.isFull ? "true" : "false";
+        card.dataset.canJoin = normalizedParty.canJoin === false ? "false" : "true";
+        card.dataset.status = normalizedParty.status || (isPartyEnded(normalizedParty) ? "ended" : normalizedParty.isCanceled ? "cancelled" : "open");
         card.dataset.canceledAt = normalizedParty.canceledAt || "";
         card.dataset.members = JSON.stringify(normalizedParty.members);
         card.dataset.source = "mine";
@@ -1758,6 +2105,7 @@
         const thumb = document.createElement("div");
         thumb.className = "party-card-thumb";
         thumb.setAttribute("aria-hidden", "true");
+        renderImageBox(thumb, normalizedParty.imageUrl, normalizedParty.mealType?.slice(0, 1) || "飯");
 
         const body = document.createElement("div");
         body.className = "party-card-body";
@@ -1807,7 +2155,7 @@
     function isPartyAvailable(party) {
         const normalizedParty = normalizeParty(party);
         const currentPeople = Number(normalizedParty.currentPeople || (normalizedParty.members || []).length || 0);
-        return normalizedParty.isCanceled !== true && currentPeople < normalizedParty.maxMembers;
+        return normalizedParty.isCanceled !== true && !isPartyEnded(normalizedParty) && normalizedParty.isFull !== true && currentPeople < normalizedParty.maxMembers;
     }
 
     function matchesPartyFilters(party) {
@@ -1916,15 +2264,16 @@
         }
 
         fillPartyFields(detailFields, currentParty);
-        updateHostPreview();
+        renderImageBox(detailPartyImage, normalizeParty(currentParty).imageUrl, "飯");
+        renderPartyHostPreview(currentParty);
 
         const status = getPartyStatus(currentParty);
 
         if (partyJoinBtn) {
-            partyJoinBtn.hidden = !allowJoinFlow;
+            partyJoinBtn.hidden = isAdminUser() || !allowJoinFlow;
             partyJoinBtn.disabled = false;
 
-            if (allowJoinFlow) {
+            if (!isAdminUser() && allowJoinFlow) {
                 if (status.key === "owner") {
                     partyJoinBtn.textContent = "管理飯局";
                     partyJoinBtn.disabled = false;
@@ -1932,6 +2281,9 @@
                     partyJoinBtn.textContent = "查看成員";
                 } else if (status.key === "canceled") {
                     partyJoinBtn.textContent = "已取消";
+                    partyJoinBtn.disabled = true;
+                } else if (status.key === "ended") {
+                    partyJoinBtn.textContent = "已結束";
                     partyJoinBtn.disabled = true;
                 } else if (status.key === "full") {
                     partyJoinBtn.textContent = "已額滿";
@@ -1943,7 +2295,7 @@
         }
 
         if (partyDetailDeleteBtn) {
-            partyDetailDeleteBtn.hidden = status.key !== "canceled";
+            partyDetailDeleteBtn.hidden = !canCurrentUserDeleteClosedParty(currentParty);
         }
 
         switchView("partyDetail");
@@ -1954,6 +2306,7 @@
 
         currentParty = normalizeParty(currentParty);
         fillPartyFields(joinedFields, currentParty);
+        renderImageBox(joinedPartyImage, currentParty.imageUrl, "飯");
         renderJoinedMembers(currentParty);
         updateJoinedActionButtons(currentParty);
         switchView("partyJoined");
@@ -1973,92 +2326,59 @@
             openPartyDetail(card, options);
         });
     }
+    function getOtherPartyListContainer() {
+        if (!otherPartyCard) return null;
+
+        let list = document.getElementById("other-party-list");
+        if (!list) {
+            list = document.createElement("div");
+            list.id = "other-party-list";
+            list.className = "party-list";
+            list.setAttribute("aria-live", "polite");
+            otherPartyCard.insertAdjacentElement("beforebegin", list);
+        }
+
+        return list;
+    }
+
+    function createOtherPartyCard(party) {
+        const card = createPartyCard(party, false);
+        card.className = "party-card party-card--other";
+        card.dataset.source = "other";
+        card.setAttribute("aria-label", `查看 ${party.partyName || "飯局"} 詳情`);
+        return card;
+    }
+
     function prepareOtherPartyCard() {
         if (!otherPartyCard) return;
 
-        const backendOtherParties = backendParties
-            .filter((party) => !party.isMine && !isDemoPartyId(party.id));
-        const backendOtherParty = backendOtherParties[0] || null;
+        // 舊版 HTML 只有一張固定的 other-party-card，會導致其他飯局永遠只顯示第一筆。
+        // 保留它當作隱藏模板，實際列表改由 other-party-list 動態渲染全部飯局。
+        otherPartyCard.hidden = true;
 
-        const party = backendOtherParty
-            ? getJoinedParty(backendOtherParty.id) || backendOtherParty
-            : null;
+        const otherPartyList = getOtherPartyListContainer();
+        if (!otherPartyList) return;
+        otherPartyList.innerHTML = "";
 
-        // 沒有資料庫飯局時，不再 fallback 到 HTML 裡的範例飯局。
-        if (!party || isPartyDeleted(party.id)) {
-            otherPartyCard.hidden = true;
-            visibleOtherPartyCount = 0;
+        const allOtherParties = backendParties
+            .filter((party) => !party.isMine && !isDemoPartyId(party.id) && !isPartyDeleted(party.id))
+            .map((party) => normalizeParty(getJoinedParty(party.id) || party));
 
-            if (otherPartyEmpty) {
-                otherPartyEmpty.hidden = false;
-                otherPartyEmpty.textContent = "目前沒有其他飯局。";
-            }
+        const filteredParties = allOtherParties.filter(matchesPartyFilters);
+        visibleOtherPartyCount = filteredParties.length;
 
-            if (otherPartiesSection) otherPartiesSection.hidden = false;
-            return;
-        }
-
-        otherPartyCard.dataset.partyId = party.id;
-        otherPartyCard.dataset.partyName = party.partyName;
-        otherPartyCard.dataset.host = party.host;
-        otherPartyCard.dataset.store = party.store;
-        otherPartyCard.dataset.time = party.time;
-        otherPartyCard.dataset.mealType = party.mealType;
-        otherPartyCard.dataset.maxMembers = String(party.maxMembers);
-        otherPartyCard.dataset.currentPeople = String(party.currentPeople || party.members.length);
-        otherPartyCard.dataset.description = party.description;
-        otherPartyCard.dataset.canceled = party.isCanceled ? "true" : "false";
-        otherPartyCard.dataset.canceledAt = party.canceledAt || "";
-        otherPartyCard.dataset.members = JSON.stringify(party.members);
-        otherPartyCard.dataset.source = "other";
-
-        const shouldShow = matchesPartyFilters(party);
-        otherPartyCard.hidden = !shouldShow;
-        visibleOtherPartyCount = shouldShow ? 1 : 0;
+        filteredParties.forEach((party) => {
+            otherPartyList.appendChild(createOtherPartyCard(party));
+        });
 
         if (otherPartyEmpty) {
-            otherPartyEmpty.hidden = shouldShow;
-            otherPartyEmpty.textContent = "其他飯局沒有符合條件的飯局。";
+            otherPartyEmpty.hidden = filteredParties.length > 0;
+            otherPartyEmpty.textContent = allOtherParties.length > 0
+                ? "其他飯局沒有符合條件的飯局。"
+                : "目前沒有其他飯局。";
         }
 
         if (otherPartiesSection) otherPartiesSection.hidden = false;
-
-        const grid = otherPartyCard.querySelector(".party-card-grid");
-        let labels = $$(".party-label", otherPartyCard);
-
-        let mealLabel = otherPartyCard.querySelector(".party-label--meal");
-        if (!mealLabel && grid) {
-            mealLabel = document.createElement("span");
-            mealLabel.className = "party-label party-label--meal";
-            grid.appendChild(mealLabel);
-        }
-
-        let peopleLabel = otherPartyCard.querySelector(".party-label--people");
-        if (!peopleLabel && grid) {
-            peopleLabel = document.createElement("span");
-            peopleLabel.className = "party-label party-label--people";
-            grid.appendChild(peopleLabel);
-        }
-
-        let statusBadge = otherPartyCard.querySelector(".party-card-status");
-        if (!statusBadge && grid) {
-            statusBadge = document.createElement("span");
-            statusBadge.className = "party-card-status";
-            grid.appendChild(statusBadge);
-        }
-
-        labels = $$(".party-label", otherPartyCard);
-        const values = [party.partyName, party.host, party.store, party.time];
-        labels.slice(0, 4).forEach((label, index) => {
-            if (values[index]) label.textContent = values[index];
-        });
-
-        if (mealLabel) mealLabel.textContent = party.mealType;
-        if (peopleLabel) peopleLabel.textContent = getPartyPeopleText(party);
-        if (statusBadge) setStatusClass(statusBadge, getPartyStatus(party));
-
-        const existingDeleteBtn = otherPartyCard.querySelector(".party-card-delete");
-        if (existingDeleteBtn) existingDeleteBtn.remove();
     }
 
 
@@ -2405,8 +2725,227 @@
         }
     }
 
+
     /* ======================================================
-     * 9. 篩選選單功能
+     * 9. 後台管理功能
+     * ====================================================== */
+    function setAdminMessage(message = "", isError = false) {
+        if (!adminMessage) return;
+        adminMessage.textContent = message;
+        adminMessage.classList.toggle("admin-message--error", isError);
+    }
+
+    function formatAdminDate(value) {
+        if (!value) return "-";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return date.toLocaleString("zh-TW", {
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
+
+    function renderAdminSummary(summary = {}) {
+        if (adminTotalUsers) adminTotalUsers.textContent = String(summary.users || 0);
+        if (adminTotalParties) adminTotalParties.textContent = String(summary.parties || 0);
+        if (adminTotalMessages) adminTotalMessages.textContent = String(summary.messages || 0);
+        if (adminTotalRatings) adminTotalRatings.textContent = String(summary.ratings || 0);
+    }
+
+    function renderAdminUsers(users = []) {
+        if (!adminUserList) return;
+        adminUserList.innerHTML = "";
+
+        if (!users.length) {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有使用者資料。</td>`;
+            adminUserList.appendChild(row);
+            return;
+        }
+
+        users.forEach((user) => {
+            const row = document.createElement("tr");
+            const ratingText = user.average_rating == null ? "尚無" : `${Number(user.average_rating).toFixed(1)} / 5`;
+            const isSelf = String(user.id) === String(currentUser?.id);
+
+            row.innerHTML = `
+                <td>${user.id}</td>
+                <td>
+                    <strong>${user.name || "未命名"}</strong><br />
+                    <span class="admin-muted">${user.account || ""}</span>
+                </td>
+                <td>${user.role === "admin" ? "管理員" : "一般"}</td>
+                <td>${user.hosted_count || 0}</td>
+                <td>${ratingText}</td>
+                <td></td>
+            `;
+
+            const actionCell = row.querySelector("td:last-child");
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "admin-danger-btn";
+            deleteBtn.textContent = isSelf ? "自己" : "刪除";
+            deleteBtn.disabled = isSelf;
+            deleteBtn.addEventListener("click", async () => {
+                if (!confirm(`確定要刪除使用者「${user.name || user.account}」嗎？相關飯局、聊天與評價也會一起刪除。`)) return;
+                await api.adminDeleteUser(user.id, currentUser.id);
+                await loadAdminDashboard();
+            });
+            actionCell.appendChild(deleteBtn);
+            adminUserList.appendChild(row);
+        });
+    }
+
+    function getAdminPartyStatusText(status) {
+        const labels = {
+            open: "招募中",
+            ended: "已結束",
+            cancelled: "已取消",
+        };
+        return labels[status] || status || "未知";
+    }
+
+    function renderAdminParties(parties = []) {
+        if (!adminPartyList) return;
+        adminPartyList.innerHTML = "";
+
+        if (!parties.length) {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有飯局資料。</td>`;
+            adminPartyList.appendChild(row);
+            return;
+        }
+
+        parties.forEach((party) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${party.id}</td>
+                <td>
+                    <strong>${party.title || "飯局"}</strong><br />
+                    <span class="admin-muted">${party.store || ""}・${party.meal_type || ""}</span>
+                </td>
+                <td>${party.host_name || party.host_account || "-"}</td>
+                <td>${party.party_time || "-"}<br /><span class="admin-muted">${party.current_people || 0} / ${party.max_people || 0} 人</span></td>
+                <td>${getAdminPartyStatusText(party.status)}</td>
+                <td></td>
+            `;
+
+            const actionCell = row.querySelector("td:last-child");
+            const cancelBtn = document.createElement("button");
+            cancelBtn.type = "button";
+            cancelBtn.className = "admin-secondary-btn";
+            cancelBtn.textContent = "取消";
+            cancelBtn.disabled = party.status === "cancelled";
+            cancelBtn.addEventListener("click", async () => {
+                if (!confirm(`確定要取消飯局「${party.title}」嗎？`)) return;
+                await api.adminCancelParty(party.id, currentUser.id);
+                await loadAdminDashboard();
+                await loadBackendParties();
+            });
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "admin-danger-btn";
+            deleteBtn.textContent = "刪除";
+            deleteBtn.addEventListener("click", async () => {
+                if (!confirm(`確定要刪除飯局「${party.title}」嗎？此動作無法復原。`)) return;
+                await api.adminDeleteParty(party.id, currentUser.id);
+                await loadAdminDashboard();
+                await loadBackendParties();
+                renderChatRoomList();
+            });
+
+            actionCell.append(cancelBtn, deleteBtn);
+            adminPartyList.appendChild(row);
+        });
+    }
+
+    function renderAdminChats(messages = []) {
+        if (!adminChatList) return;
+        adminChatList.innerHTML = "";
+
+        if (!messages.length) {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有聊天室訊息。</td>`;
+            adminChatList.appendChild(row);
+            return;
+        }
+
+        messages.forEach((message) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${message.id}</td>
+                <td>${message.party_title || "-"}</td>
+                <td>${message.sender_name || message.sender_account || "-"}</td>
+                <td class="admin-message-cell">${message.message || ""}</td>
+                <td>${formatAdminDate(message.created_at)}</td>
+                <td></td>
+            `;
+
+            const actionCell = row.querySelector("td:last-child");
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "admin-danger-btn";
+            deleteBtn.textContent = "刪除";
+            deleteBtn.addEventListener("click", async () => {
+                if (!confirm("確定要刪除這則聊天室訊息嗎？")) return;
+                await api.adminDeleteChatMessage(message.id, currentUser.id);
+                await loadAdminDashboard();
+                if (currentChatPartyId) {
+                    await openChatRoom(currentChatPartyId);
+                }
+            });
+            actionCell.appendChild(deleteBtn);
+            adminChatList.appendChild(row);
+        });
+    }
+
+    async function loadAdminDashboard() {
+        if (!isLoggedIn()) {
+            switchView("login");
+            return;
+        }
+
+        if (!isAdminUser()) {
+            alert("只有管理員可以進入後台管理。需要先將 users.role 設為 admin。");
+            switchView("home");
+            return;
+        }
+
+        try {
+            if (adminRefreshBtn) {
+                adminRefreshBtn.disabled = true;
+                adminRefreshBtn.textContent = "讀取中...";
+            }
+            setAdminMessage("讀取後台資料中...");
+
+            const [summaryResult, usersResult, partiesResult, chatsResult] = await Promise.all([
+                api.getAdminSummary(currentUser.id),
+                api.getAdminUsers(currentUser.id),
+                api.getAdminParties(currentUser.id),
+                api.getAdminChats(currentUser.id),
+            ]);
+
+            renderAdminSummary(summaryResult.summary || {});
+            renderAdminUsers(usersResult.users || []);
+            renderAdminParties(partiesResult.parties || []);
+            renderAdminChats(chatsResult.messages || []);
+            setAdminMessage("後台資料已更新。 ");
+        } catch (error) {
+            console.error("讀取後台資料失敗：", error);
+            setAdminMessage(error.message || "讀取後台資料失敗", true);
+        } finally {
+            if (adminRefreshBtn) {
+                adminRefreshBtn.disabled = false;
+                adminRefreshBtn.textContent = "重新整理";
+            }
+        }
+    }
+
+    /* ======================================================
+     * 10. 篩選選單功能
      * ====================================================== */
     function initFilterMenu() {
         if (!filterBtn || !filterMenu || !filterLabel) return;
@@ -2556,7 +3095,7 @@
 
             if (member.avatar) {
                 const img = document.createElement("img");
-                img.src = member.avatar;
+                img.src = getImageUrl(member.avatar);
                 img.alt = "";
                 avatar.appendChild(img);
             } else {
@@ -2685,6 +3224,11 @@
     }
 
     async function openRatingPage() {
+        if (isAdminUser()) {
+            alert("管理員帳號為純後台模式，不能使用評價功能。");
+            switchView("admin");
+            return;
+        }
         if (!currentParty) return;
         if (isBackendPartyId(currentParty.id)) {
             try {
@@ -2733,6 +3277,12 @@
                 event.preventDefault();
                 const navKey = item.dataset.nav;
 
+                if (isAdminUser() && !(navKey === "admin" || navKey === "profile")) {
+                    switchView("admin");
+                    loadAdminDashboard();
+                    return;
+                }
+
                 if (navKey === "profile") {
                     openProfileOrLogin();
                     return;
@@ -2750,9 +3300,17 @@
                     return;
                 }
 
+                if (navKey === "admin") {
+                    switchView("admin");
+                    loadAdminDashboard();
+                    return;
+                }
+
                 switchView(NAV_TO_VIEW[navKey] || "home");
             });
         });
+
+        adminRefreshBtn?.addEventListener("click", loadAdminDashboard);
 
         searchInput?.addEventListener("input", renderHomeParties);
         availableOnlyFilter?.addEventListener("change", renderHomeParties);
@@ -2816,7 +3374,7 @@
                 return;
             }
 
-            if (status.key === "canceled" || status.key === "full") return;
+            if (status.key === "canceled" || status.key === "ended" || status.key === "full") return;
 
             const joinedParty = await joinCurrentParty();
             if (!joinedParty) return;
@@ -2826,9 +3384,10 @@
         });
 
         partyDetailDeleteBtn?.addEventListener("click", async () => {
-            if (!currentParty || !currentParty.isCanceled) return;
+            if (!currentParty) return;
+            if (!canCurrentUserDeleteClosedParty(currentParty)) return;
             const partyId = currentParty.id;
-            await deleteCanceledPartyRecord(partyId);
+            await deleteClosedPartyRecord(partyId);
             if (!currentParty) switchView("home");
         });
 
@@ -2846,13 +3405,14 @@
             if (!updatedParty) return;
 
             fillPartyFields(detailFields, updatedParty);
-            updateHostPreview();
+            renderImageBox(detailPartyImage, normalizeParty(updatedParty).imageUrl, "飯");
+            renderPartyHostPreview(updatedParty);
 
             if (partyJoinBtn) {
                 const status = getPartyStatus(updatedParty);
                 partyJoinBtn.hidden = false;
-                partyJoinBtn.disabled = status.key === "full" || status.key === "canceled";
-                partyJoinBtn.textContent = status.key === "full" ? "已額滿" : status.key === "canceled" ? "已取消" : "join";
+                partyJoinBtn.disabled = status.key === "full" || status.key === "canceled" || status.key === "ended";
+                partyJoinBtn.textContent = status.key === "full" ? "已額滿" : status.key === "canceled" ? "已取消" : status.key === "ended" ? "已結束" : "join";
             }
 
             alert("已退出飯局，成員列表與人數已更新。你可以再次按 join 加入。");
@@ -2886,7 +3446,14 @@
 
         partyRateBtn?.addEventListener("click", openRatingPage);
         ratingSubmitBtn?.addEventListener("click", submitRatings);
-        fab?.addEventListener("click", () => switchView("create"));
+        fab?.addEventListener("click", () => {
+            if (isAdminUser()) {
+                alert("管理員帳號為純後台模式，不能建立飯局。");
+                switchView("admin");
+                return;
+            }
+            switchView("create");
+        });
 
         createForm?.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -2894,6 +3461,12 @@
             if (!isLoggedIn()) {
                 alert("請先登入後再建立飯局");
                 switchView("login");
+                return;
+            }
+
+            if (isAdminUser()) {
+                alert("管理員帳號為純後台模式，不能建立飯局。");
+                switchView("admin");
                 return;
             }
 
@@ -2906,6 +3479,11 @@
             }
 
             try {
+                const coverFile = createCoverFile?.files?.[0];
+                if (coverFile) {
+                    partyData.imageUrl = await uploadImageFile(coverFile, "party");
+                }
+
                 const result = await api.createParty(partyData);
 
                 addNotification(
@@ -2934,18 +3512,49 @@
 
         profileSaveBtn?.addEventListener("click", saveProfileToBackend);
 
-        profileAvatarFile?.addEventListener("change", () => {
+        profileForm?.addEventListener("submit", saveProfileToBackend);
+
+        profileAvatarFile?.addEventListener("change", async (event) => {
+            event?.preventDefault?.();
+            event?.stopPropagation?.();
+
             const file = profileAvatarFile.files?.[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.addEventListener("load", () => {
-                const profile = collectProfileData();
-                profile.avatar = String(reader.result || "");
-                saveProfileData(profile);
-                renderProfileForm();
-            });
-            reader.readAsDataURL(file);
+            if (!isLoggedIn() || !currentUser?.id) {
+                alert("請先登入後再更換頭像");
+                profileAvatarFile.value = "";
+                switchView("login");
+                return;
+            }
+
+            try {
+                const errorMessage = validateImageFile(file);
+                if (errorMessage) throw new Error(errorMessage);
+
+                pendingProfileAvatarFile = file;
+                pendingProfileAvatarPreview = await fileToDataUrl(file);
+
+                if (profileAvatarPreview && profileAvatarIcon) {
+                    profileAvatarPreview.src = pendingProfileAvatarPreview;
+                    profileAvatarPreview.hidden = false;
+                    profileAvatarIcon.hidden = true;
+                }
+
+                if (profileSaveBtn) {
+                    profileSaveBtn.hidden = false;
+                    profileSaveBtn.disabled = false;
+                    profileSaveBtn.textContent = "儲存";
+                }
+
+                setProfileEditMode(true);
+            } catch (error) {
+                pendingProfileAvatarFile = null;
+                pendingProfileAvatarPreview = "";
+                profileAvatarFile.value = "";
+                console.error("頭像預覽失敗：", error);
+                alert(error.message || "頭像預覽失敗");
+            }
         });
 
         chatForm?.addEventListener("submit", async (event) => {
@@ -2969,6 +3578,7 @@
      * ====================================================== */
     function init() {
         loadSavedUser();
+        updateAdminNavVisibility();
         removeDemoPartiesFromLocalStorage();
         bindEvents();
         initFilterMenu();
@@ -2980,7 +3590,13 @@
         loadBackendParties();
         renderChatRoomList();
         renderNotifications();
-        switchView("home");
+
+        if (isAdminUser()) {
+            switchView("admin");
+            loadAdminDashboard();
+        } else {
+            switchView("home");
+        }
     }
 
     init();
