@@ -4,18 +4,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>飯局系統</title>
+  <title>飯搭子系統</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
   <div class="app" data-view="home">
     <header class="header">
-      <div class="header-top">
-        <div class="header-avatar" aria-hidden="true"></div>
-        <h1 class="header-title">系統名稱</h1>
+      <div class="header-top header-brand">
+        <div class="header-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.5 8.2c0-1.35 1.1-2.45 2.45-2.45h10.1c1.35 0 2.45 1.1 2.45 2.45v4.9A5.9 5.9 0 0 1 13.6 19H10.4a5.9 5.9 0 0 1-5.9-5.9V8.2z" />
+            <path d="M8 3.8v2.1" />
+            <path d="M16 3.8v2.1" />
+            <path d="M8.5 10.2h7" />
+            <path d="M9.7 13.7h4.6" />
+          </svg>
+        </div>
+        <div class="header-brand-text">
+          <span class="header-subtitle">Meal Partner</span>
+          <h1 class="header-title">飯搭子系統</h1>
+        </div>
       </div>
-      <div class="header-banner header-banner--home" role="presentation"></div>
+
+      <div class="header-banner header-banner--home" aria-label="飯搭子系統介紹">
+        <div class="header-banner-content">
+          <span class="header-banner-tag">校園約飯社群</span>
+          <h2 class="header-banner-title">今天想找誰一起吃飯？</h2>
+          <p class="header-banner-text">建立飯局、加入聚餐、聊天室討論，一起把吃飯變得更簡單。</p>
+        </div>
+        <div class="header-banner-visual" aria-hidden="true">
+          <span class="header-banner-bowl">飯</span>
+          <span class="header-banner-dot header-banner-dot--one"></span>
+          <span class="header-banner-dot header-banner-dot--two"></span>
+        </div>
+      </div>
     </header>
 
     <!-- 登入 / 註冊頁 -->
@@ -97,49 +120,93 @@
 
     <!-- 首頁 -->
     <main id="view-home" class="view view--active" aria-label="首頁">
-      <div class="toolbar">
-        <label class="search-bar" for="search-input">
-          <span class="search-icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-3-3" />
-            </svg>
-          </span>
-          <input id="search-input" type="search" placeholder="搜尋飯局、主辦人、店家" autocomplete="off"
-            aria-label="搜尋飯局、主辦人、店家" />
-        </label>
-        <div class="filter-wrap">
-          <button type="button" class="filter-btn" id="filter-btn" aria-haspopup="listbox" aria-expanded="false">
-            <span id="filter-label">全部</span>
-            <span class="filter-caret" aria-hidden="true">▼</span>
+      <section class="home-query-panel" aria-label="飯局查詢與篩選">
+        <div class="toolbar home-query-toolbar">
+          <label class="search-bar home-query-search" for="search-input">
+            <span class="search-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3-3" />
+              </svg>
+            </span>
+            <input id="search-input" type="search" placeholder="搜尋飯局、主辦人、餐廳名稱..." autocomplete="off"
+              aria-label="搜尋飯局、主辦人、餐廳名稱" />
+          </label>
+
+          <button type="button" class="filter-btn home-query-toggle" id="filter-btn" aria-expanded="true"
+            aria-controls="advanced-filter-panel">
+            <span id="filter-label">進階篩選</span>
+            <span class="filter-caret" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 15l6-6 6 6" />
+              </svg>
+            </span>
           </button>
-          <ul class="filter-menu" id="filter-menu" role="listbox" hidden>
-            <li role="option" data-value="全部">全部</li>
-            <li role="option" data-value="早餐">早餐</li>
-            <li role="option" data-value="午餐">午餐</li>
-            <li role="option" data-value="晚餐">晚餐</li>
-            <li role="option" data-value="宵夜">宵夜</li>
-          </ul>
         </div>
+
+        <div class="filter-extra filter-extra--advanced home-query-advanced" id="advanced-filter-panel"
+          aria-label="進階篩選">
+          <div class="home-filter-row">
+            <label class="home-filter-field" for="meal-type-filter">
+              <span>餐期</span>
+              <select id="meal-type-filter" class="home-filter-select">
+                <option value="全部">全部餐期</option>
+                <option value="早餐">早餐</option>
+                <option value="午餐">午餐</option>
+                <option value="晚餐">晚餐</option>
+                <option value="宵夜">宵夜</option>
+              </select>
+            </label>
+
+            <label class="home-filter-field" for="restaurant-category-filter">
+              <span>餐廳類型</span>
+              <select id="restaurant-category-filter" class="home-filter-select">
+                <option value="全部">全部類型</option>
+              </select>
+            </label>
+
+            <label class="home-filter-field" for="restaurant-price-filter">
+              <span>價格</span>
+              <select id="restaurant-price-filter" class="home-filter-select">
+                <option value="全部">全部價格</option>
+                <option value="$">$ 平價</option>
+                <option value="$$">$$ 中等</option>
+                <option value="$$$">$$$ 較高</option>
+              </select>
+            </label>
+
+            <label class="available-filter home-query-available">
+              <input type="checkbox" id="available-only-filter" />
+              <span>只顯示尚未額滿</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <div class="home-party-tabs" role="tablist" aria-label="飯局分類切換">
+        <button type="button" class="home-party-tab home-party-tab--active" id="home-tab-my" data-home-tab="my"
+          role="tab" aria-selected="true" aria-controls="my-parties-section">
+          我的飯局 <span id="my-party-tab-count">0</span>
+        </button>
+        <button type="button" class="home-party-tab" id="home-tab-other" data-home-tab="other" role="tab"
+          aria-selected="false" aria-controls="other-parties-section">
+          其他飯局 <span id="other-party-tab-count">0</span>
+        </button>
       </div>
 
-      <div class="filter-extra" aria-label="進階篩選">
-        <label class="available-filter">
-          <input type="checkbox" id="available-only-filter" />
-          <span>只顯示尚未額滿</span>
-        </label>
-      </div>
-
-      <section class="section" id="my-parties-section" aria-labelledby="my-parties-heading">
+      <section class="section home-party-panel home-party-panel--active" id="my-parties-section" aria-labelledby="my-parties-heading"
+        role="tabpanel" aria-describedby="home-tab-my">
         <div class="section-header">
           <h2 id="my-parties-heading" class="section-title">我的飯局</h2>
-          <span class="section-hint">新增飯局後會自動出現在這裡</span>
+          <span class="section-hint">包含你建立與已加入的飯局</span>
         </div>
         <div id="my-party-list" class="party-list" aria-live="polite"></div>
         <p id="my-party-empty" class="empty-text" hidden>目前尚未建立飯局。</p>
       </section>
 
-      <section class="section" id="other-parties-section" aria-labelledby="other-parties-heading">
+      <section class="section home-party-panel" id="other-parties-section" aria-labelledby="other-parties-heading" role="tabpanel"
+        aria-describedby="home-tab-other" hidden>
         <h2 id="other-parties-heading" class="section-title">其他飯局</h2>
         <article class="party-card party-card--other" id="other-party-card" role="button" tabindex="0"
           aria-label="查看其他飯局詳情" data-party-id="other-demo-party" data-party-name="午餐找飯搭子" data-host="王小明"
@@ -209,6 +276,7 @@
     <!-- 飯局詳情 -->
     <main id="view-party-detail" class="view view--party-detail" aria-label="飯局詳情" hidden>
       <article class="party-detail-card">
+        <button type="button" class="party-report-btn" id="detail-report-btn" aria-label="檢舉飯局或主辦人" title="檢舉">⚑</button>
         <div class="party-detail-image" id="detail-party-image" aria-hidden="true"></div>
         <div class="party-detail-info party-detail-info--full">
           <h2 class="party-detail-title" id="detail-party-name">飯局名稱</h2>
@@ -239,6 +307,13 @@
               </dd>
             </div>
           </dl>
+          <section class="party-restaurant-info" id="detail-restaurant-info" aria-label="餐廳資訊" hidden>
+            <h3 class="party-description-title">餐廳資訊</h3>
+            <p><strong id="detail-restaurant-name">餐廳名稱</strong></p>
+            <p><span id="detail-restaurant-category">類型</span>｜<span id="detail-restaurant-price">價格</span>｜<span id="detail-restaurant-hours">營業時間</span></p>
+            <p id="detail-restaurant-address">地址</p>
+            <p id="detail-restaurant-feature">特色</p>
+          </section>
           <section class="party-description" aria-label="飯局介紹">
             <h3 class="party-description-title">飯局介紹</h3>
             <p id="detail-description">尚未填寫飯局介紹。</p>
@@ -260,6 +335,7 @@
     <!-- 飯局詳情（已加入） -->
     <main id="view-party-joined" class="view view--party-joined" aria-label="飯局成員" hidden>
       <article class="party-detail-card">
+        <button type="button" class="party-report-btn" id="joined-report-btn" aria-label="檢舉飯局或主辦人" title="檢舉">⚑</button>
         <div class="party-detail-image" id="joined-party-image" aria-hidden="true"></div>
         <div class="party-detail-info party-detail-info--full">
           <h2 class="party-detail-title" id="joined-party-name">飯局名稱</h2>
@@ -290,6 +366,13 @@
               </dd>
             </div>
           </dl>
+          <section class="party-restaurant-info" id="joined-restaurant-info" aria-label="餐廳資訊" hidden>
+            <h3 class="party-description-title">餐廳資訊</h3>
+            <p><strong id="joined-restaurant-name">餐廳名稱</strong></p>
+            <p><span id="joined-restaurant-category">類型</span>｜<span id="joined-restaurant-price">價格</span>｜<span id="joined-restaurant-hours">營業時間</span></p>
+            <p id="joined-restaurant-address">地址</p>
+            <p id="joined-restaurant-feature">特色</p>
+          </section>
           <section class="party-description" aria-label="飯局介紹">
             <h3 class="party-description-title">飯局介紹</h3>
             <p id="joined-description">尚未填寫飯局介紹。</p>
@@ -332,13 +415,55 @@
             <label class="create-label" for="create-party-name">飯局名稱</label>
             <input type="text" class="create-input" id="create-party-name" name="partyName" />
           </div>
-          <div class="create-row">
-            <label class="create-label" for="create-host">約飯人 先生/小姐</label>
-            <input type="text" class="create-input" id="create-host" name="host" />
+          <div class="create-row create-row--restaurant">
+            <label class="create-label" for="create-restaurant">餐廳選擇</label>
+            <div class="create-restaurant-control">
+              <select class="create-input create-select" id="create-restaurant" name="restaurantId">
+                <option value="">讀取餐廳清單中...</option>
+              </select>
+              <button type="button" class="create-secondary-btn create-new-restaurant-btn" id="create-new-restaurant-toggle">＋ 新增其他餐廳</button>
+            </div>
+            <input type="hidden" id="create-store" name="store" />
           </div>
-          <div class="create-row">
-            <label class="create-label" for="create-store">店家名稱</label>
-            <input type="text" class="create-input" id="create-store" name="store" />
+          <div class="create-restaurant-info" id="create-restaurant-info" hidden>
+            <p><strong id="create-restaurant-name">餐廳名稱</strong></p>
+            <p><span id="create-restaurant-category">類型</span>｜<span id="create-restaurant-price">價格</span>｜<span id="create-restaurant-hours">營業時間</span></p>
+            <p id="create-restaurant-address">地址</p>
+            <p id="create-restaurant-feature">特色</p>
+          </div>
+          <div class="create-custom-restaurant" id="create-custom-restaurant" hidden>
+            <p class="create-custom-restaurant-title">新增其他餐廳</p>
+            <div class="create-custom-restaurant-grid">
+              <label class="create-custom-field" for="custom-restaurant-name">
+                <span>餐廳名稱</span>
+                <input type="text" class="create-input" id="custom-restaurant-name" placeholder="例如：小牛炸雞飯" />
+              </label>
+              <label class="create-custom-field" for="custom-restaurant-category">
+                <span>類型</span>
+                <input type="text" class="create-input" id="custom-restaurant-category" placeholder="例如：便當、咖哩、麵食" />
+              </label>
+              <label class="create-custom-field" for="custom-restaurant-price">
+                <span>價格</span>
+                <select class="create-input create-select" id="custom-restaurant-price">
+                  <option value="$">$ 平價</option>
+                  <option value="$$">$$ 中等</option>
+                  <option value="$$$">$$$ 較高</option>
+                </select>
+              </label>
+              <label class="create-custom-field" for="custom-restaurant-hours">
+                <span>營業時間</span>
+                <input type="text" class="create-input" id="custom-restaurant-hours" placeholder="例如：11:00-20:00" />
+              </label>
+              <label class="create-custom-field" for="custom-restaurant-address">
+                <span>地址</span>
+                <input type="text" class="create-input" id="custom-restaurant-address" placeholder="例如：龍潭路 123 號" />
+              </label>
+              <label class="create-custom-field create-custom-field--full" for="custom-restaurant-feature">
+                <span>特色</span>
+                <input type="text" class="create-input" id="custom-restaurant-feature" placeholder="例如：便宜、份量大、出餐快" />
+              </label>
+            </div>
+            <p class="create-file-hint">送出飯局時，會先把這間餐廳新增進資料庫，再建立飯局。</p>
           </div>
           <div class="create-row">
             <label class="create-label" for="create-time">時間</label>
@@ -507,7 +632,52 @@
             <span class="admin-summary-label">評價</span>
             <strong id="admin-total-ratings">0</strong>
           </article>
+          <article class="admin-summary-card">
+            <span class="admin-summary-label">餐廳</span>
+            <strong id="admin-total-restaurants">0</strong>
+          </article>
+          <article class="admin-summary-card">
+            <span class="admin-summary-label">待審檢舉</span>
+            <strong id="admin-pending-reports">0</strong>
+          </article>
         </div>
+
+        <section class="admin-section" aria-labelledby="admin-restaurants-title">
+          <h3 id="admin-restaurants-title" class="admin-section-title">餐廳管理</h3>
+          <p class="admin-section-desc">管理建立飯局時可以選擇的校園周邊餐廳。</p>
+          <form id="admin-restaurant-form" class="admin-restaurant-form" novalidate>
+            <input type="hidden" id="admin-restaurant-id" />
+            <input type="text" id="admin-restaurant-name" placeholder="餐廳名稱" />
+            <input type="text" id="admin-restaurant-category" placeholder="類型，例如：便當" />
+            <select id="admin-restaurant-price">
+              <option value="$">$</option>
+              <option value="$$">$$</option>
+              <option value="$$$">$$$</option>
+            </select>
+            <input type="text" id="admin-restaurant-hours" placeholder="營業時間，例如：11:00-20:00" />
+            <input type="text" id="admin-restaurant-address" placeholder="地址" />
+            <input type="text" id="admin-restaurant-feature" placeholder="特色" />
+            <div class="admin-restaurant-actions">
+              <button type="submit" class="admin-secondary-btn" id="admin-restaurant-save-btn">新增餐廳</button>
+              <button type="button" class="admin-danger-btn" id="admin-restaurant-cancel-edit" hidden>取消編輯</button>
+            </div>
+          </form>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>餐廳</th>
+                  <th>類型/價格</th>
+                  <th>營業時間</th>
+                  <th>特色</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="admin-restaurant-list"></tbody>
+            </table>
+          </div>
+        </section>
 
         <section class="admin-section" aria-labelledby="admin-users-title">
           <h3 id="admin-users-title" class="admin-section-title">使用者管理</h3>
@@ -566,8 +736,70 @@
             </table>
           </div>
         </section>
+
+        <section class="admin-section" aria-labelledby="admin-reports-title">
+          <h3 id="admin-reports-title" class="admin-section-title">檢舉審核</h3>
+          <p class="admin-section-desc">查看使用者送出的飯局、主辦人與聊天室訊息檢舉，並標記處理狀態。</p>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>類型 / 對象</th>
+                  <th>檢舉人</th>
+                  <th>原因</th>
+                  <th>狀態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="admin-report-list"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
     </main>
+
+
+    <!-- 檢舉彈窗 -->
+    <div class="report-modal" id="report-modal" hidden>
+      <div class="report-modal-backdrop" data-report-close></div>
+      <section class="report-dialog" role="dialog" aria-modal="true" aria-labelledby="report-dialog-title">
+        <div class="report-dialog-header">
+          <h2 id="report-dialog-title">檢舉</h2>
+          <button type="button" class="report-close-btn" id="report-close-btn" aria-label="關閉檢舉視窗">×</button>
+        </div>
+        <p class="report-target-text" id="report-target-text">請選擇檢舉內容。</p>
+        <form id="report-form" class="report-form" novalidate>
+          <div class="report-row" id="report-target-row">
+            <label for="report-target-type">檢舉對象</label>
+            <select id="report-target-type">
+              <option value="party">檢舉飯局</option>
+              <option value="user">檢舉主辦人</option>
+            </select>
+          </div>
+          <div class="report-row">
+            <label for="report-reason">檢舉原因</label>
+            <select id="report-reason" required>
+              <option value="">請選擇原因</option>
+              <option value="不當內容">不當內容</option>
+              <option value="騷擾或攻擊">騷擾或攻擊</option>
+              <option value="虛假資訊">虛假資訊</option>
+              <option value="垃圾訊息">垃圾訊息</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div class="report-row report-row--textarea">
+            <label for="report-description">補充說明</label>
+            <textarea id="report-description" rows="4" placeholder="可以簡單說明檢舉原因，方便管理員審核。"></textarea>
+          </div>
+          <p class="report-message" id="report-message" aria-live="polite"></p>
+          <div class="report-actions">
+            <button type="button" class="report-cancel-btn" id="report-cancel-btn">取消</button>
+            <button type="submit" class="report-submit-btn" id="report-submit-btn">送出檢舉</button>
+          </div>
+        </form>
+      </section>
+    </div>
 
     <button type="button" class="fab" id="fab" aria-label="新增飯局">
       <span aria-hidden="true">+</span>

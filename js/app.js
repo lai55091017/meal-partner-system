@@ -56,16 +56,16 @@
     };
 
     const PAGE_TITLES = {
-        login: "登入 · 飯局系統",
-        home: "飯局系統",
-        notifications: "通知 · 飯局系統",
-        chat: "聊天室 · 飯局系統",
-        partyDetail: "飯局詳情 · 飯局系統",
-        partyJoined: "飯局成員 · 飯局系統",
-        rating: "評價 · 飯局系統",
-        create: "新增飯局 · 飯局系統",
-        profile: "個人帳號 · 飯局系統",
-        admin: "後台管理 · 飯局系統",
+        login: "登入 · 飯搭子系統",
+        home: "飯搭子系統",
+        notifications: "通知 · 飯搭子系統",
+        chat: "聊天室 · 飯搭子系統",
+        partyDetail: "飯局詳情 · 飯搭子系統",
+        partyJoined: "飯局成員 · 飯搭子系統",
+        rating: "評價 · 飯搭子系統",
+        create: "新增飯局 · 飯搭子系統",
+        profile: "個人帳號 · 飯搭子系統",
+        admin: "後台管理 · 飯搭子系統",
     };
 
     // 底部導覽列對應的主要頁面。
@@ -93,11 +93,18 @@
     const filterBtn = $("#filter-btn");
     const filterMenu = $("#filter-menu");
     const filterLabel = $("#filter-label");
+    const mealTypeFilter = $("#meal-type-filter");
+    const advancedFilterPanel = $("#advanced-filter-panel");
     const searchInput = $("#search-input");
     const availableOnlyFilter = $("#available-only-filter");
+    const restaurantCategoryFilter = $("#restaurant-category-filter");
+    const restaurantPriceFilter = $("#restaurant-price-filter");
     const homeNoResult = $("#home-no-result");
     const myPartiesSection = $("#my-parties-section");
     const otherPartiesSection = $("#other-parties-section");
+    const homePartyTabs = $$(".home-party-tab");
+    const myPartyTabCount = $("#my-party-tab-count");
+    const otherPartyTabCount = $("#other-party-tab-count");
     const createForm = $("#create-form");
     const signoutBtn = $("#profile-signout");
 
@@ -168,9 +175,52 @@
     const adminTotalParties = $("#admin-total-parties");
     const adminTotalMessages = $("#admin-total-messages");
     const adminTotalRatings = $("#admin-total-ratings");
+    const adminTotalRestaurants = $("#admin-total-restaurants");
     const adminUserList = $("#admin-user-list");
     const adminPartyList = $("#admin-party-list");
     const adminChatList = $("#admin-chat-list");
+    const createRestaurantSelect = $("#create-restaurant");
+    const createRestaurantInfo = $("#create-restaurant-info");
+    const createRestaurantName = $("#create-restaurant-name");
+    const createRestaurantCategory = $("#create-restaurant-category");
+    const createRestaurantPrice = $("#create-restaurant-price");
+    const createRestaurantHours = $("#create-restaurant-hours");
+    const createRestaurantAddress = $("#create-restaurant-address");
+    const createRestaurantFeature = $("#create-restaurant-feature");
+    const createNewRestaurantToggle = $("#create-new-restaurant-toggle");
+    const createCustomRestaurantForm = $("#create-custom-restaurant");
+    const customRestaurantName = $("#custom-restaurant-name");
+    const customRestaurantCategory = $("#custom-restaurant-category");
+    const customRestaurantPrice = $("#custom-restaurant-price");
+    const customRestaurantHours = $("#custom-restaurant-hours");
+    const customRestaurantAddress = $("#custom-restaurant-address");
+    const customRestaurantFeature = $("#custom-restaurant-feature");
+    const adminRestaurantForm = $("#admin-restaurant-form");
+    const adminRestaurantId = $("#admin-restaurant-id");
+    const adminRestaurantName = $("#admin-restaurant-name");
+    const adminRestaurantCategory = $("#admin-restaurant-category");
+    const adminRestaurantPrice = $("#admin-restaurant-price");
+    const adminRestaurantHours = $("#admin-restaurant-hours");
+    const adminRestaurantAddress = $("#admin-restaurant-address");
+    const adminRestaurantFeature = $("#admin-restaurant-feature");
+    const adminRestaurantSaveBtn = $("#admin-restaurant-save-btn");
+    const adminRestaurantCancelEdit = $("#admin-restaurant-cancel-edit");
+    const adminRestaurantList = $("#admin-restaurant-list");
+    const detailReportBtn = $("#detail-report-btn");
+    const joinedReportBtn = $("#joined-report-btn");
+    const reportModal = $("#report-modal");
+    const reportForm = $("#report-form");
+    const reportCloseBtn = $("#report-close-btn");
+    const reportCancelBtn = $("#report-cancel-btn");
+    const reportTargetText = $("#report-target-text");
+    const reportTargetRow = $("#report-target-row");
+    const reportTargetType = $("#report-target-type");
+    const reportReason = $("#report-reason");
+    const reportDescription = $("#report-description");
+    const reportMessage = $("#report-message");
+    const reportSubmitBtn = $("#report-submit-btn");
+    const adminPendingReports = $("#admin-pending-reports");
+    const adminReportList = $("#admin-report-list");
 
     /* ======================================================
      * 4. 頁面狀態資料
@@ -181,6 +231,7 @@
     let currentChatPartyId = null;
     let visibleMyPartyCount = 0;
     let visibleOtherPartyCount = 0;
+    let activeHomePartyTab = "my";
     let backendParties = [];
     let currentChatMessages = [];
     let chatPreviewCache = {};
@@ -188,6 +239,9 @@
     let receivedRatingsCache = [];
     let ratingSummaryCache = { average: null, count: 0 };
     let partyHostProfileCache = {};
+    let currentReportContext = null;
+    let restaurantOptions = [];
+    const CUSTOM_RESTAURANT_VALUE = "__custom__";
     let pendingProfileAvatarFile = null;
     let pendingProfileAvatarPreview = "";
     let isSavingProfile = false;
@@ -199,6 +253,26 @@
         return DEMO_PARTY_IDS.has(String(partyId));
     }
 
+    const detailRestaurantFields = {
+        panel: $("#detail-restaurant-info"),
+        name: $("#detail-restaurant-name"),
+        category: $("#detail-restaurant-category"),
+        price: $("#detail-restaurant-price"),
+        hours: $("#detail-restaurant-hours"),
+        address: $("#detail-restaurant-address"),
+        feature: $("#detail-restaurant-feature"),
+    };
+
+    const joinedRestaurantFields = {
+        panel: $("#joined-restaurant-info"),
+        name: $("#joined-restaurant-name"),
+        category: $("#joined-restaurant-category"),
+        price: $("#joined-restaurant-price"),
+        hours: $("#joined-restaurant-hours"),
+        address: $("#joined-restaurant-address"),
+        feature: $("#joined-restaurant-feature"),
+    };
+
     const detailFields = {
         partyName: $("#detail-party-name"),
         host: $("#detail-host"),
@@ -208,6 +282,7 @@
         people: $("#detail-people"),
         status: $("#detail-status"),
         description: $("#detail-description"),
+        restaurantInfo: detailRestaurantFields,
     };
 
     const joinedFields = {
@@ -219,6 +294,7 @@
         people: $("#joined-people"),
         status: $("#joined-status"),
         description: $("#joined-description"),
+        restaurantInfo: joinedRestaurantFields,
     };
 
     /* ======================================================
@@ -1246,6 +1322,11 @@
         }
 
         updateAdminNavVisibility();
+
+        if (safeViewKey === "create") {
+            loadRestaurants();
+        }
+
         closeFilterMenu();
     }
 
@@ -1284,6 +1365,152 @@
         return "午餐";
     }
 
+
+    function mapRestaurant(restaurant = {}) {
+        return {
+            id: restaurant.id != null ? String(restaurant.id) : "",
+            name: restaurant.name || restaurant.restaurant_name || "",
+            category: restaurant.category || restaurant.restaurant_category || "",
+            priceLevel: restaurant.price_level || restaurant.priceLevel || restaurant.restaurant_price_level || "",
+            openingHours: restaurant.opening_hours || restaurant.openingHours || restaurant.restaurant_opening_hours || "",
+            address: restaurant.address || restaurant.restaurant_address || "",
+            feature: restaurant.feature || restaurant.restaurant_feature || "",
+        };
+    }
+
+    function isCustomRestaurantMode() {
+        return createRestaurantSelect?.value === CUSTOM_RESTAURANT_VALUE;
+    }
+
+    function getSelectedRestaurant() {
+        const selectedId = createRestaurantSelect?.value || "";
+        if (selectedId === CUSTOM_RESTAURANT_VALUE) return null;
+        return restaurantOptions.find((restaurant) => String(restaurant.id) === String(selectedId)) || null;
+    }
+
+    function getCustomRestaurantData() {
+        return {
+            name: customRestaurantName?.value.trim() || "",
+            category: customRestaurantCategory?.value.trim() || "",
+            priceLevel: customRestaurantPrice?.value || "$",
+            openingHours: customRestaurantHours?.value.trim() || "",
+            address: customRestaurantAddress?.value.trim() || "",
+            feature: customRestaurantFeature?.value.trim() || "",
+        };
+    }
+
+    function resetCustomRestaurantForm() {
+        [customRestaurantName, customRestaurantCategory, customRestaurantHours, customRestaurantAddress, customRestaurantFeature].forEach((field) => {
+            if (field) field.value = "";
+        });
+        if (customRestaurantPrice) customRestaurantPrice.value = "$";
+    }
+
+    function setCustomRestaurantMode(enabled) {
+        if (!createRestaurantSelect) return;
+        createRestaurantSelect.value = enabled ? CUSTOM_RESTAURANT_VALUE : "";
+        updateSelectedRestaurantInfo();
+        if (enabled) customRestaurantName?.focus();
+    }
+
+    function renderRestaurantSelect() {
+        if (!createRestaurantSelect) return;
+
+        const currentValue = createRestaurantSelect.value;
+        createRestaurantSelect.innerHTML = "";
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = restaurantOptions.length ? "請選擇餐廳" : "目前沒有餐廳資料";
+        createRestaurantSelect.appendChild(placeholder);
+
+        restaurantOptions.forEach((restaurant) => {
+            const option = document.createElement("option");
+            option.value = String(restaurant.id);
+            option.textContent = `${restaurant.name}｜${restaurant.category}｜${restaurant.priceLevel}`;
+            createRestaurantSelect.appendChild(option);
+        });
+
+        const customOption = document.createElement("option");
+        customOption.value = CUSTOM_RESTAURANT_VALUE;
+        customOption.textContent = "＋ 新增其他餐廳";
+        createRestaurantSelect.appendChild(customOption);
+
+        if (currentValue === CUSTOM_RESTAURANT_VALUE || (currentValue && restaurantOptions.some((restaurant) => String(restaurant.id) === String(currentValue)))) {
+            createRestaurantSelect.value = currentValue;
+        }
+
+        updateSelectedRestaurantInfo();
+        updateRestaurantFilterOptions();
+    }
+
+    function updateRestaurantFilterOptions() {
+        if (!restaurantCategoryFilter) return;
+
+        const currentValue = restaurantCategoryFilter.value || "全部";
+        const categories = Array.from(new Set(
+            restaurantOptions
+                .map((restaurant) => String(restaurant.category || "").trim())
+                .filter(Boolean)
+        )).sort((a, b) => a.localeCompare(b, "zh-Hant"));
+
+        restaurantCategoryFilter.innerHTML = "";
+
+        const allOption = document.createElement("option");
+        allOption.value = "全部";
+        allOption.textContent = "全部類型";
+        restaurantCategoryFilter.appendChild(allOption);
+
+        categories.forEach((category) => {
+            const option = document.createElement("option");
+            option.value = category;
+            option.textContent = category;
+            restaurantCategoryFilter.appendChild(option);
+        });
+
+        restaurantCategoryFilter.value = categories.includes(currentValue) ? currentValue : "全部";
+    }
+
+    async function loadRestaurants() {
+        try {
+            const result = await api.getRestaurants();
+            restaurantOptions = (result.restaurants || []).map(mapRestaurant);
+            renderRestaurantSelect();
+        } catch (error) {
+            console.error("讀取餐廳清單失敗：", error);
+            restaurantOptions = [];
+            renderRestaurantSelect();
+            if (createRestaurantSelect) {
+                const option = createRestaurantSelect.querySelector("option");
+                if (option) option.textContent = "餐廳清單讀取失敗";
+            }
+        }
+    }
+
+    function updateSelectedRestaurantInfo() {
+        const restaurant = getSelectedRestaurant();
+        const customMode = isCustomRestaurantMode();
+        const storeInput = $("#create-store");
+
+        if (storeInput) storeInput.value = restaurant?.name || "";
+        if (createNewRestaurantToggle) {
+            createNewRestaurantToggle.textContent = customMode ? "取消新增餐廳" : "＋ 新增其他餐廳";
+        }
+        if (createCustomRestaurantForm) createCustomRestaurantForm.hidden = !customMode;
+
+        if (!createRestaurantInfo) return;
+
+        createRestaurantInfo.hidden = !restaurant || customMode;
+        if (!restaurant || customMode) return;
+
+        if (createRestaurantName) createRestaurantName.textContent = restaurant.name || "餐廳名稱";
+        if (createRestaurantCategory) createRestaurantCategory.textContent = restaurant.category || "未分類";
+        if (createRestaurantPrice) createRestaurantPrice.textContent = restaurant.priceLevel || "$";
+        if (createRestaurantHours) createRestaurantHours.textContent = restaurant.openingHours || "營業時間未填寫";
+        if (createRestaurantAddress) createRestaurantAddress.textContent = `地址：${restaurant.address || "尚未填寫"}`;
+        if (createRestaurantFeature) createRestaurantFeature.textContent = `特色：${restaurant.feature || "尚未填寫"}`;
+    }
+
     function mapBackendPartyToFrontend(party) {
         const currentUserId = currentUser?.id ? Number(currentUser.id) : null;
         const hostId = party.host_id ? Number(party.host_id) : null;
@@ -1307,7 +1534,13 @@
             hostDepartment: party.host_department || "",
             hostBio: party.host_bio || "",
             hostAvatar: party.host_avatar || "",
-            store: party.store,
+            store: party.restaurant_name || party.store,
+            restaurantId: party.restaurant_id,
+            restaurantCategory: party.restaurant_category || "",
+            restaurantPriceLevel: party.restaurant_price_level || "",
+            restaurantOpeningHours: party.restaurant_opening_hours || "",
+            restaurantAddress: party.restaurant_address || "",
+            restaurantFeature: party.restaurant_feature || "",
             time: party.party_time,
             mealType: party.meal_type,
             maxMembers: Number(party.max_people) || 4,
@@ -1396,7 +1629,13 @@
             hostAvatar: rawParty.hostAvatar || rawParty.host_avatar || "",
             hostDiet: Array.isArray(rawParty.hostDiet) ? rawParty.hostDiet : [],
             hostCuisine: Array.isArray(rawParty.hostCuisine) ? rawParty.hostCuisine : [],
-            store: rawParty.store || "店家名稱",
+            store: rawParty.store || rawParty.restaurantName || "店家名稱",
+            restaurantId: rawParty.restaurantId != null ? String(rawParty.restaurantId) : (rawParty.restaurant_id != null ? String(rawParty.restaurant_id) : ""),
+            restaurantCategory: rawParty.restaurantCategory || rawParty.restaurant_category || "",
+            restaurantPriceLevel: rawParty.restaurantPriceLevel || rawParty.restaurant_price_level || "",
+            restaurantOpeningHours: rawParty.restaurantOpeningHours || rawParty.restaurant_opening_hours || "",
+            restaurantAddress: rawParty.restaurantAddress || rawParty.restaurant_address || "",
+            restaurantFeature: rawParty.restaurantFeature || rawParty.restaurant_feature || "",
             time: rawParty.time || "時間",
             mealType: inferMealType(rawParty),
             maxMembers,
@@ -1427,6 +1666,12 @@
             hostAvatar: card.dataset.hostAvatar || "",
             imageUrl: card.dataset.imageUrl || "",
             store: card.dataset.store || "店家名稱",
+            restaurantId: card.dataset.restaurantId || "",
+            restaurantCategory: card.dataset.restaurantCategory || "",
+            restaurantPriceLevel: card.dataset.restaurantPriceLevel || "",
+            restaurantOpeningHours: card.dataset.restaurantOpeningHours || "",
+            restaurantAddress: card.dataset.restaurantAddress || "",
+            restaurantFeature: card.dataset.restaurantFeature || "",
             time: card.dataset.time || "時間",
             mealType: card.dataset.mealType || "",
             maxMembers: card.dataset.maxMembers || 4,
@@ -1449,13 +1694,21 @@
 
         const partyId = `party-${Date.now()}`;
         const hostMember = getCurrentMember("主辦人");
-        hostMember.name = $("#create-host")?.value.trim() || hostName;
+        hostMember.name = hostName;
+        const selectedRestaurant = getSelectedRestaurant();
+        const customRestaurant = isCustomRestaurantMode() ? getCustomRestaurantData() : null;
 
         return normalizeParty({
             id: partyId,
             partyName: $("#create-party-name")?.value.trim() || "飯局名稱",
             host: hostMember.name,
-            store: $("#create-store")?.value.trim() || "店家名稱",
+            store: selectedRestaurant?.name || customRestaurant?.name || $("#create-store")?.value.trim() || "店家名稱",
+            restaurantId: selectedRestaurant?.id || "",
+            restaurantCategory: selectedRestaurant?.category || customRestaurant?.category || "",
+            restaurantPriceLevel: selectedRestaurant?.priceLevel || customRestaurant?.priceLevel || "",
+            restaurantOpeningHours: selectedRestaurant?.openingHours || customRestaurant?.openingHours || "",
+            restaurantAddress: selectedRestaurant?.address || customRestaurant?.address || "",
+            restaurantFeature: selectedRestaurant?.feature || customRestaurant?.feature || "",
             time: $("#create-time")?.value.trim() || "時間",
             mealType: $("#create-meal-type")?.value || "午餐",
             maxMembers: $("#create-max-members")?.value.trim() || 4,
@@ -1469,10 +1722,15 @@
 
     //建立飯局用函式
     function getBackendPartyDataFromForm() {
+        const selectedRestaurant = getSelectedRestaurant();
+        const customRestaurant = isCustomRestaurantMode() ? getCustomRestaurantData() : null;
+
         return {
             title: $("#create-party-name")?.value.trim() || "",
             hostId: currentUser?.id,
-            store: $("#create-store")?.value.trim() || "",
+            restaurantId: selectedRestaurant?.id || "",
+            customRestaurant,
+            store: selectedRestaurant?.name || customRestaurant?.name || "",
             mealType: $("#create-meal-type")?.value || "午餐",
             partyTime: $("#create-time")?.value || "",
             maxPeople: Number($("#create-max-members")?.value || 0),
@@ -1485,7 +1743,13 @@
     function validateBackendPartyData(partyData) {
         if (!partyData.title) return "請輸入飯局名稱";
         if (!partyData.hostId) return "請先登入後再建立飯局";
-        if (!partyData.store) return "請輸入店家名稱";
+        if (!partyData.restaurantId && !partyData.customRestaurant) return "請選擇餐廳或新增其他餐廳";
+        if (partyData.customRestaurant) {
+            if (!partyData.customRestaurant.name) return "請輸入新增餐廳名稱";
+            if (!partyData.customRestaurant.category) return "請輸入新增餐廳類型";
+            if (!partyData.customRestaurant.openingHours) return "請輸入新增餐廳營業時間";
+            if (!partyData.customRestaurant.address) return "請輸入新增餐廳地址";
+        }
         if (!partyData.mealType) return "請選擇餐期";
         if (!partyData.partyTime) return "請選擇時間";
         if (!partyData.maxPeople || partyData.maxPeople < 2) return "人數上限至少需要 2 人";
@@ -2071,12 +2335,84 @@
         if (joinedMembersCount) joinedMembersCount.textContent = `${members.length} 人`;
     }
 
-    function createPartyCard(party, isDefault = false) {
-        const card = document.createElement("article");
-        card.className = "party-card party-card--mine";
-        card.role = "button";
-        card.tabIndex = 0;
-        card.setAttribute("aria-label", `查看 ${party.partyName || "飯局"} 詳情`);
+    function getPartyCardIconSvg(icon) {
+        const iconMap = {
+            host: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"></circle><path d="M5.5 20c.8-4.2 3.1-6.2 6.5-6.2s5.7 2 6.5 6.2"></path></svg>',
+            meal: '<svg viewBox="0 0 24 24"><path d="M7 3v8"></path><path d="M11 3v8"></path><path d="M7 7h4"></path><path d="M9 11v10"></path><path d="M17 3v18"></path><path d="M17 3c2.2 1.5 3 3.3 3 5.3 0 1.9-.8 3.4-3 4.5"></path></svg>',
+            time: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5l3.2 2"></path></svg>',
+            people: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><path d="M3.8 19c.7-3.6 2.5-5.3 5.2-5.3s4.5 1.7 5.2 5.3"></path><circle cx="16.5" cy="9" r="2.4"></circle><path d="M14.9 14.4c2.7.2 4.5 1.8 5.1 4.6"></path></svg>',
+            restaurant: '<svg viewBox="0 0 24 24"><path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>',
+        };
+
+        const normalizedIcon = {
+            "👤": "host",
+            "🍽": "meal",
+            "⏰": "time",
+            "👥": "people",
+            "📍": "restaurant",
+        }[icon] || icon;
+
+        return iconMap[normalizedIcon] || iconMap.restaurant;
+    }
+
+    function createPartyCardMeta(icon, text, className = "") {
+        const item = document.createElement("span");
+        item.className = `party-card-meta-item ${className}`.trim();
+
+        const iconEl = document.createElement("span");
+        iconEl.className = "party-card-meta-icon";
+        iconEl.setAttribute("aria-hidden", "true");
+        iconEl.innerHTML = getPartyCardIconSvg(icon);
+
+        const textEl = document.createElement("span");
+        textEl.className = "party-card-meta-text";
+        textEl.textContent = text;
+
+        item.append(iconEl, textEl);
+        return item;
+    }
+
+    function createPartyCardAvatars(party) {
+        const avatarWrap = document.createElement("div");
+        avatarWrap.className = "party-card-avatars";
+        avatarWrap.setAttribute("aria-label", "參與成員");
+
+        const normalizedParty = normalizeParty(party);
+        const members = Array.isArray(normalizedParty.members) ? normalizedParty.members : [];
+        const displayMembers = members.length
+            ? members.slice(0, 3)
+            : [{ name: normalizedParty.host, avatar: normalizedParty.hostAvatar }];
+
+        displayMembers.forEach((member) => {
+            const avatar = document.createElement("span");
+            avatar.className = "party-card-avatar";
+            avatar.title = member.name || "成員";
+
+            const avatarUrl = getImageUrl(member.avatar || "");
+            if (avatarUrl) {
+                const img = document.createElement("img");
+                img.src = avatarUrl;
+                img.alt = "";
+                avatar.appendChild(img);
+            } else {
+                avatar.textContent = (member.name || normalizedParty.host || "飯").slice(0, 1);
+            }
+
+            avatarWrap.appendChild(avatar);
+        });
+
+        const currentPeople = Number(normalizedParty.currentPeople || members.length || displayMembers.length || 0);
+        if (currentPeople > displayMembers.length) {
+            const extra = document.createElement("span");
+            extra.className = "party-card-avatar party-card-avatar--more";
+            extra.textContent = `+${currentPeople - displayMembers.length}`;
+            avatarWrap.appendChild(extra);
+        }
+
+        return avatarWrap;
+    }
+
+    function applyPartyCardDataset(card, party, source) {
         const normalizedParty = normalizeParty(party);
         card.dataset.partyId = normalizedParty.id;
         card.dataset.partyName = normalizedParty.partyName;
@@ -2088,6 +2424,12 @@
         card.dataset.hostAvatar = normalizedParty.hostAvatar || "";
         card.dataset.imageUrl = normalizedParty.imageUrl || "";
         card.dataset.store = normalizedParty.store;
+        card.dataset.restaurantId = normalizedParty.restaurantId || "";
+        card.dataset.restaurantCategory = normalizedParty.restaurantCategory || "";
+        card.dataset.restaurantPriceLevel = normalizedParty.restaurantPriceLevel || "";
+        card.dataset.restaurantOpeningHours = normalizedParty.restaurantOpeningHours || "";
+        card.dataset.restaurantAddress = normalizedParty.restaurantAddress || "";
+        card.dataset.restaurantFeature = normalizedParty.restaurantFeature || "";
         card.dataset.time = normalizedParty.time;
         card.dataset.mealType = normalizedParty.mealType;
         card.dataset.maxMembers = String(normalizedParty.maxMembers);
@@ -2100,7 +2442,17 @@
         card.dataset.status = normalizedParty.status || (isPartyEnded(normalizedParty) ? "ended" : normalizedParty.isCanceled ? "cancelled" : "open");
         card.dataset.canceledAt = normalizedParty.canceledAt || "";
         card.dataset.members = JSON.stringify(normalizedParty.members);
-        card.dataset.source = "mine";
+        card.dataset.source = source;
+    }
+
+    function createPartyCard(party, isDefault = false) {
+        const normalizedParty = normalizeParty(party);
+        const card = document.createElement("article");
+        card.className = "party-card party-card--mine party-card--list";
+        card.role = "button";
+        card.tabIndex = 0;
+        card.setAttribute("aria-label", `查看 ${normalizedParty.partyName || "飯局"} 詳情`);
+        applyPartyCardDataset(card, normalizedParty, "mine");
 
         const thumb = document.createElement("div");
         thumb.className = "party-card-thumb";
@@ -2108,36 +2460,77 @@
         renderImageBox(thumb, normalizedParty.imageUrl, normalizedParty.mealType?.slice(0, 1) || "飯");
 
         const body = document.createElement("div");
-        body.className = "party-card-body";
+        body.className = "party-card-body party-card-body--list";
 
-        const grid = document.createElement("div");
-        grid.className = "party-card-grid";
+        const topRow = document.createElement("div");
+        topRow.className = "party-card-top-row";
 
-        const fields = [
-            { text: normalizedParty.partyName, className: "party-label" },
-            { text: normalizedParty.host, className: "party-label party-label--right" },
-            { text: normalizedParty.store, className: "party-label" },
-            { text: normalizedParty.time, className: "party-label party-label--right" },
-            { text: normalizedParty.mealType, className: "party-label party-label--meal" },
-            { text: getPartyPeopleText(normalizedParty), className: "party-label party-label--people" },
-        ];
+        const titleBlock = document.createElement("div");
+        titleBlock.className = "party-card-title-block";
 
-        fields.forEach((field) => {
-            const span = document.createElement("span");
-            span.className = field.className;
-            span.textContent = field.text;
-            grid.appendChild(span);
-        });
+        const title = document.createElement("h3");
+        title.className = "party-card-title";
+        title.textContent = normalizedParty.partyName;
 
+        const host = document.createElement("p");
+        host.className = "party-card-host";
+        host.append(
+            createPartyCardMeta("host", normalizedParty.host || "使用者", "party-card-meta-item--host")
+        );
+
+        titleBlock.append(title, host);
+
+        const sideTools = document.createElement("div");
+        sideTools.className = "party-card-side-tools";
+        sideTools.appendChild(createPartyCardAvatars(normalizedParty));
+
+        topRow.append(titleBlock, sideTools);
+
+        const metaRow = document.createElement("div");
+        metaRow.className = "party-card-meta-row";
+        metaRow.append(
+            createPartyCardMeta("meal", normalizedParty.mealType || "餐期", "party-card-meta-item--meal"),
+            createPartyCardMeta("time", normalizedParty.time || "時間", "party-card-meta-item--time"),
+            createPartyCardMeta("people", getPartyPeopleText(normalizedParty), "party-card-meta-item--people")
+        );
+
+        const bottomRow = document.createElement("div");
+        bottomRow.className = "party-card-bottom-row";
+
+        const restaurantInfo = document.createElement("div");
+        restaurantInfo.className = "party-card-restaurant";
+
+        const restaurantName = createPartyCardMeta("restaurant", normalizedParty.store || "餐廳", "party-card-restaurant-name");
+        restaurantInfo.appendChild(restaurantName);
+
+        const restaurantTags = document.createElement("div");
+        restaurantTags.className = "party-card-restaurant-tags";
+
+        if (normalizedParty.restaurantCategory) {
+            const tag = document.createElement("span");
+            tag.className = "party-card-tag party-card-tag--category";
+            tag.textContent = normalizedParty.restaurantCategory;
+            restaurantTags.appendChild(tag);
+        }
+
+        if (normalizedParty.restaurantPriceLevel) {
+            const tag = document.createElement("span");
+            tag.className = "party-card-tag party-card-tag--price";
+            tag.textContent = normalizedParty.restaurantPriceLevel;
+            restaurantTags.appendChild(tag);
+        }
+
+        if (restaurantTags.children.length) {
+            restaurantInfo.appendChild(restaurantTags);
+        }
 
         const status = getPartyStatus(normalizedParty);
         const statusBadge = document.createElement("span");
         statusBadge.className = "party-card-status";
         setStatusClass(statusBadge, status);
-        grid.appendChild(statusBadge);
 
-
-        body.appendChild(grid);
+        bottomRow.append(restaurantInfo, statusBadge);
+        body.append(topRow, metaRow, bottomRow);
         card.append(thumb, body);
 
         bindPartyCard(card, { allowJoin: true });
@@ -2147,7 +2540,9 @@
     function getHomeFilterState() {
         return {
             keyword: (searchInput?.value || "").trim().toLowerCase(),
-            mealType: filterLabel?.textContent.trim() || "全部",
+            mealType: mealTypeFilter?.value || "全部",
+            restaurantCategory: restaurantCategoryFilter?.value || "全部",
+            restaurantPrice: restaurantPriceFilter?.value || "全部",
             availableOnly: availableOnlyFilter?.checked === true,
         };
     }
@@ -2163,11 +2558,27 @@
         const filter = getHomeFilterState();
 
         if (filter.keyword) {
-            const targetText = `${normalizedParty.partyName} ${normalizedParty.host} ${normalizedParty.store}`.toLowerCase();
+            const targetText = [
+                normalizedParty.partyName,
+                normalizedParty.host,
+                normalizedParty.store,
+                normalizedParty.restaurantCategory,
+                normalizedParty.restaurantPriceLevel,
+                normalizedParty.restaurantAddress,
+                normalizedParty.restaurantFeature,
+            ].join(" ").toLowerCase();
             if (!targetText.includes(filter.keyword)) return false;
         }
 
         if (filter.mealType && filter.mealType !== "全部" && normalizedParty.mealType !== filter.mealType) {
+            return false;
+        }
+
+        if (filter.restaurantCategory && filter.restaurantCategory !== "全部" && normalizedParty.restaurantCategory !== filter.restaurantCategory) {
+            return false;
+        }
+
+        if (filter.restaurantPrice && filter.restaurantPrice !== "全部" && normalizedParty.restaurantPriceLevel !== filter.restaurantPrice) {
             return false;
         }
 
@@ -2184,16 +2595,53 @@
         if (homeNoResult) homeNoResult.hidden = true;
     }
 
+    function updateHomePartyTabs() {
+        if (myPartyTabCount) myPartyTabCount.textContent = String(visibleMyPartyCount);
+        if (otherPartyTabCount) otherPartyTabCount.textContent = String(visibleOtherPartyCount);
+
+        const showMy = activeHomePartyTab !== "other";
+
+        if (myPartiesSection) {
+            myPartiesSection.hidden = !showMy;
+            myPartiesSection.classList.toggle("home-party-panel--active", showMy);
+        }
+
+        if (otherPartiesSection) {
+            otherPartiesSection.hidden = showMy;
+            otherPartiesSection.classList.toggle("home-party-panel--active", !showMy);
+        }
+
+        homePartyTabs.forEach((tab) => {
+            const isActive = tab.dataset.homeTab === activeHomePartyTab;
+            tab.classList.toggle("home-party-tab--active", isActive);
+            tab.setAttribute("aria-selected", String(isActive));
+            tab.tabIndex = isActive ? 0 : -1;
+        });
+    }
+
+    function setHomePartyTab(tabKey) {
+        activeHomePartyTab = tabKey === "other" ? "other" : "my";
+        updateHomePartyTabs();
+    }
+
+    function isMyRelatedParty(party) {
+        const normalizedParty = normalizeParty(party);
+        return normalizedParty.isMine === true || isCurrentUserMember(normalizedParty);
+    }
+
     function renderMyParties() {
         if (!myPartyList) return;
 
         myPartyList.innerHTML = "";
 
-        const backendMyParties = backendParties.filter((party) => party.isMine);
-
-        const allParties = backendMyParties
+        // 我的飯局 = 我建立的飯局 + 我已加入的飯局。
+        const allParties = backendParties
             .map(normalizeParty)
-            .filter((party) => !isDemoPartyId(party.id) && !isPartyDeleted(party.id));
+            .filter((party) =>
+                isMyRelatedParty(party) &&
+                !isDemoPartyId(party.id) &&
+                !isPartyDeleted(party.id)
+            );
         const filteredParties = allParties.filter(matchesPartyFilters);
 
         visibleMyPartyCount = filteredParties.length;
@@ -2206,7 +2654,7 @@
             myPartyEmpty.hidden = filteredParties.length > 0;
             myPartyEmpty.textContent = allParties.length > 0
                 ? "我的飯局沒有符合條件的飯局。"
-                : "目前尚未建立飯局。";
+                : "目前尚未建立或加入飯局。";
         }
 
         if (myPartiesSection) myPartiesSection.hidden = false;
@@ -2230,6 +2678,30 @@
         renderMyParties();
         prepareOtherPartyCard();
         updateHomeNoResult();
+        updateHomePartyTabs();
+    }
+
+    function renderPartyRestaurantInfo(fields, party) {
+        if (!fields?.panel || !party) return;
+        const normalizedParty = normalizeParty(party);
+        const hasRestaurantInfo = Boolean(
+            normalizedParty.store ||
+            normalizedParty.restaurantCategory ||
+            normalizedParty.restaurantPriceLevel ||
+            normalizedParty.restaurantOpeningHours ||
+            normalizedParty.restaurantAddress ||
+            normalizedParty.restaurantFeature
+        );
+
+        fields.panel.hidden = !hasRestaurantInfo;
+        if (!hasRestaurantInfo) return;
+
+        if (fields.name) fields.name.textContent = normalizedParty.store || "餐廳名稱";
+        if (fields.category) fields.category.textContent = normalizedParty.restaurantCategory || "未分類";
+        if (fields.price) fields.price.textContent = normalizedParty.restaurantPriceLevel || "$";
+        if (fields.hours) fields.hours.textContent = normalizedParty.restaurantOpeningHours || "營業時間未填寫";
+        if (fields.address) fields.address.textContent = `地址：${normalizedParty.restaurantAddress || "尚未填寫"}`;
+        if (fields.feature) fields.feature.textContent = `特色：${normalizedParty.restaurantFeature || "尚未填寫"}`;
     }
 
     function fillPartyFields(fields, data) {
@@ -2243,6 +2715,7 @@
         if (fields.people) fields.people.textContent = getPartyPeopleText(party);
         if (fields.status) setStatusClass(fields.status, getPartyStatus(party));
         if (fields.description) fields.description.textContent = party.description || "尚未填寫飯局介紹。";
+        renderPartyRestaurantInfo(fields.restaurantInfo, party);
     }
 
     async function openPartyDetail(card, options = {}) {
@@ -2360,9 +2833,14 @@
         if (!otherPartyList) return;
         otherPartyList.innerHTML = "";
 
+        // 其他飯局 = 我還沒加入、也不是我建立的飯局。
         const allOtherParties = backendParties
-            .filter((party) => !party.isMine && !isDemoPartyId(party.id) && !isPartyDeleted(party.id))
-            .map((party) => normalizeParty(getJoinedParty(party.id) || party));
+            .map(normalizeParty)
+            .filter((party) =>
+                !isMyRelatedParty(party) &&
+                !isDemoPartyId(party.id) &&
+                !isPartyDeleted(party.id)
+            );
 
         const filteredParties = allOtherParties.filter(matchesPartyFilters);
         visibleOtherPartyCount = filteredParties.length;
@@ -2662,6 +3140,25 @@
             time.className = "chat-message-time";
             time.textContent = formatMessageTime(message.createdAt);
 
+            if (String(message.senderId) !== String(currentUserId) && !isAdminUser() && isBackendPartyId(message.id)) {
+                const reportBtn = document.createElement("button");
+                reportBtn.type = "button";
+                reportBtn.className = "chat-report-btn";
+                reportBtn.textContent = "檢舉";
+                reportBtn.setAttribute("aria-label", "檢舉這則聊天訊息");
+                reportBtn.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    openReportModal({
+                        targetType: "chat",
+                        targetId: message.id,
+                        partyId: currentChatPartyId,
+                        preview: String(message.text || "").slice(0, 40),
+                    });
+                });
+                time.appendChild(reportBtn);
+            }
+
             item.append(sender, bubble, time);
             chatMessageList.appendChild(item);
         });
@@ -2726,6 +3223,300 @@
     }
 
 
+
+    /* ======================================================
+     * 檢舉功能
+     * ====================================================== */
+    function getReportTargetLabel(type) {
+        const labels = {
+            party: "飯局",
+            user: "飯局成員",
+            chat: "聊天室訊息",
+        };
+        return labels[type] || "檢舉對象";
+    }
+
+    function getCurrentUserPartyRole(party) {
+        if (!isLoggedIn()) return "guest";
+
+        const normalizedParty = normalizeParty(party || currentParty || {});
+        const currentUserId = String(getCurrentUserId());
+
+        if (normalizedParty.hostId && String(normalizedParty.hostId) === currentUserId) {
+            return "host";
+        }
+
+        const currentMember = (normalizedParty.members || []).find((member) => String(member?.id) === currentUserId);
+        if (!currentMember) return "outsider";
+
+        return currentMember.role === "主辦人" ? "host" : "member";
+    }
+
+    function canReportPartyItself(party) {
+        const role = getCurrentUserPartyRole(party);
+        // 外部使用者可以檢舉飯局；一般成員也可以檢舉飯局。
+        // 主辦人不需要檢舉自己建立的飯局，應改由後台管理處理。
+        return role === "outsider" || role === "member";
+    }
+
+    function getReportablePartyMembers(party) {
+        const normalizedParty = normalizeParty(party || currentParty || {});
+        const roleInParty = getCurrentUserPartyRole(normalizedParty);
+
+        // 外部使用者不屬於飯局內部，因此只能檢舉飯局本身，不能檢舉成員。
+        if (roleInParty === "outsider" || roleInParty === "guest") return [];
+
+        const members = Array.isArray(normalizedParty.members) ? normalizedParty.members : [];
+        const seen = new Set();
+        const currentUserId = String(getCurrentUserId());
+        const reportableMembers = [];
+
+        members.forEach((member) => {
+            const memberId = member?.id != null ? String(member.id) : "";
+            if (!memberId || seen.has(memberId) || memberId === currentUserId) return;
+            seen.add(memberId);
+            reportableMembers.push({
+                id: memberId,
+                name: member.name || member.account || "使用者",
+                role: member.role || (String(memberId) === String(normalizedParty.hostId) ? "主辦人" : "參加者"),
+            });
+        });
+
+        // 若成員清單因資料未載入而缺少主辦人，非主辦人成員仍可檢舉主辦人。
+        if (
+            roleInParty === "member" &&
+            normalizedParty.hostId &&
+            !seen.has(String(normalizedParty.hostId)) &&
+            String(normalizedParty.hostId) !== currentUserId
+        ) {
+            reportableMembers.unshift({
+                id: String(normalizedParty.hostId),
+                name: normalizedParty.host || "主辦人",
+                role: "主辦人",
+            });
+        }
+
+        return reportableMembers;
+    }
+
+    function getReportMemberLabel(member) {
+        const roleText = member.role ? `（${member.role}）` : "";
+        return `${member.name || "使用者"}${roleText}`;
+    }
+
+    function setupReportTargetOptions(context = {}) {
+        if (!reportTargetType) return;
+
+        const isChatReport = context.targetType === "chat";
+        reportTargetType.innerHTML = "";
+        reportTargetType.disabled = isChatReport;
+
+        if (isChatReport) {
+            const option = document.createElement("option");
+            option.value = "chat";
+            option.textContent = "檢舉聊天室訊息";
+            reportTargetType.appendChild(option);
+            return;
+        }
+
+        const party = context.party || currentParty;
+
+        if (canReportPartyItself(party)) {
+            const partyOption = document.createElement("option");
+            partyOption.value = "party";
+            partyOption.textContent = "檢舉飯局";
+            reportTargetType.appendChild(partyOption);
+        }
+
+        getReportablePartyMembers(party).forEach((member) => {
+            const option = document.createElement("option");
+            option.value = `user:${member.id}`;
+            option.textContent = `檢舉 ${getReportMemberLabel(member)}`;
+            reportTargetType.appendChild(option);
+        });
+
+        if (context.defaultTargetId) {
+            const targetValue = `user:${context.defaultTargetId}`;
+            if ([...reportTargetType.options].some((option) => option.value === targetValue)) {
+                reportTargetType.value = targetValue;
+                return;
+            }
+        }
+
+        if (!reportTargetType.options.length) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "目前沒有可檢舉對象";
+            reportTargetType.appendChild(option);
+            reportTargetType.disabled = true;
+            return;
+        }
+
+        reportTargetType.value = context.defaultTargetType === "user" && reportTargetType.options[1]
+            ? reportTargetType.options[1].value
+            : reportTargetType.options[0].value;
+    }
+
+    function openReportModal(context = {}) {
+        if (!isLoggedIn()) {
+            alert("請先登入後再檢舉");
+            switchView("login");
+            return;
+        }
+
+        if (isAdminUser()) {
+            alert("管理員帳號使用後台審核功能，不使用一般檢舉流程。");
+            return;
+        }
+
+        currentReportContext = context;
+
+        if (reportForm) reportForm.reset();
+        if (reportMessage) reportMessage.textContent = "";
+        if (reportSubmitBtn) reportSubmitBtn.disabled = false;
+
+        const isChatReport = context.targetType === "chat";
+        if (reportTargetRow) reportTargetRow.hidden = isChatReport;
+        setupReportTargetOptions(context);
+
+        const hasSelectableReportTarget = isChatReport || Boolean(reportTargetType?.value);
+        if (reportSubmitBtn) reportSubmitBtn.disabled = !hasSelectableReportTarget;
+
+        if (reportTargetText) {
+            if (isChatReport) {
+                reportTargetText.textContent = `檢舉聊天室訊息：${context.preview || "訊息內容"}`;
+            } else {
+                const party = context.party || currentParty;
+                const partyName = context.party?.partyName || "目前飯局";
+                const roleInParty = getCurrentUserPartyRole(party);
+                const members = getReportablePartyMembers(party);
+                const canReportParty = canReportPartyItself(party);
+
+                if (roleInParty === "outsider") {
+                    reportTargetText.textContent = `你不是這場飯局的成員，因此只能檢舉飯局「${partyName}」。每個對象只能檢舉一次。`;
+                } else if (roleInParty === "host") {
+                    reportTargetText.textContent = members.length
+                        ? `你是這場飯局的主辦人，可以檢舉其他參與成員；不能檢舉自己建立的飯局。每個對象只能檢舉一次。`
+                        : `你是這場飯局的主辦人，目前沒有其他可檢舉的參與成員。`;
+                } else if (canReportParty && members.length) {
+                    reportTargetText.textContent = `你可以檢舉飯局「${partyName}」，也可以檢舉這場飯局中的其他成員。每個對象只能檢舉一次。`;
+                } else {
+                    reportTargetText.textContent = `你可以檢舉飯局「${partyName}」。每個對象只能檢舉一次。`;
+                }
+            }
+        }
+
+        if (reportModal) reportModal.hidden = false;
+        reportReason?.focus();
+    }
+
+    function closeReportModal() {
+        if (reportModal) reportModal.hidden = true;
+        currentReportContext = null;
+        if (reportForm) reportForm.reset();
+        if (reportMessage) reportMessage.textContent = "";
+        if (reportSubmitBtn) reportSubmitBtn.disabled = false;
+        if (reportTargetType) reportTargetType.disabled = false;
+    }
+
+    function buildReportPayload() {
+        const context = currentReportContext || {};
+        const reason = reportReason?.value || "";
+        const description = reportDescription?.value.trim() || "";
+
+        if (context.targetType === "chat") {
+            return {
+                userId: currentUser?.id,
+                targetType: "chat",
+                targetId: context.targetId,
+                partyId: context.partyId || currentChatPartyId || null,
+                reason,
+                description,
+            };
+        }
+
+        const party = normalizeParty(context.party || currentParty);
+        const selectedTarget = reportTargetType?.value || "";
+
+        if (!selectedTarget) {
+            return {
+                userId: currentUser?.id,
+                targetType: "",
+                targetId: "",
+                partyId: party.id,
+                reason,
+                description,
+            };
+        }
+
+        if (selectedTarget.startsWith("user:")) {
+            return {
+                userId: currentUser?.id,
+                targetType: "user",
+                targetId: selectedTarget.replace("user:", ""),
+                partyId: party.id,
+                reason,
+                description,
+            };
+        }
+
+        // 相容舊版選項：若仍是 user，就檢舉主辦人。
+        if (selectedTarget === "user") {
+            return {
+                userId: currentUser?.id,
+                targetType: "user",
+                targetId: party.hostId,
+                partyId: party.id,
+                reason,
+                description,
+            };
+        }
+
+        return {
+            userId: currentUser?.id,
+            targetType: "party",
+            targetId: party.id,
+            partyId: party.id,
+            reason,
+            description,
+        };
+    }
+
+    async function submitReportForm() {
+        if (!currentReportContext) return;
+
+        const payload = buildReportPayload();
+
+        if (!payload.reason) {
+            if (reportMessage) reportMessage.textContent = "請選擇檢舉原因";
+            return;
+        }
+
+        if (!payload.targetId) {
+            if (reportMessage) reportMessage.textContent = "找不到檢舉對象，請重新整理後再試。";
+            return;
+        }
+
+        try {
+            if (reportSubmitBtn) {
+                reportSubmitBtn.disabled = true;
+                reportSubmitBtn.textContent = "送出中...";
+            }
+
+            await api.submitReport(payload);
+            closeReportModal();
+            alert("檢舉已送出，管理員會進行審核。 ");
+        } catch (error) {
+            console.error("送出檢舉失敗：", error);
+            if (reportMessage) reportMessage.textContent = error.message || "送出檢舉失敗";
+        } finally {
+            if (reportSubmitBtn) {
+                reportSubmitBtn.disabled = false;
+                reportSubmitBtn.textContent = "送出檢舉";
+            }
+        }
+    }
+
     /* ======================================================
      * 9. 後台管理功能
      * ====================================================== */
@@ -2752,6 +3543,91 @@
         if (adminTotalParties) adminTotalParties.textContent = String(summary.parties || 0);
         if (adminTotalMessages) adminTotalMessages.textContent = String(summary.messages || 0);
         if (adminTotalRatings) adminTotalRatings.textContent = String(summary.ratings || 0);
+        if (adminTotalRestaurants) adminTotalRestaurants.textContent = String(summary.restaurants || 0);
+        if (adminPendingReports) adminPendingReports.textContent = String(summary.pendingReports || 0);
+    }
+
+
+    function getRestaurantFormData() {
+        return {
+            name: adminRestaurantName?.value.trim() || "",
+            category: adminRestaurantCategory?.value.trim() || "",
+            priceLevel: adminRestaurantPrice?.value || "$",
+            openingHours: adminRestaurantHours?.value.trim() || "",
+            address: adminRestaurantAddress?.value.trim() || "",
+            feature: adminRestaurantFeature?.value.trim() || "",
+        };
+    }
+
+    function resetRestaurantForm() {
+        if (adminRestaurantForm) adminRestaurantForm.reset();
+        if (adminRestaurantId) adminRestaurantId.value = "";
+        if (adminRestaurantSaveBtn) adminRestaurantSaveBtn.textContent = "新增餐廳";
+        if (adminRestaurantCancelEdit) adminRestaurantCancelEdit.hidden = true;
+    }
+
+    function fillRestaurantForm(restaurant) {
+        if (!restaurant) return;
+        if (adminRestaurantId) adminRestaurantId.value = restaurant.id || "";
+        if (adminRestaurantName) adminRestaurantName.value = restaurant.name || "";
+        if (adminRestaurantCategory) adminRestaurantCategory.value = restaurant.category || "";
+        if (adminRestaurantPrice) adminRestaurantPrice.value = restaurant.price_level || restaurant.priceLevel || "$";
+        if (adminRestaurantHours) adminRestaurantHours.value = restaurant.opening_hours || restaurant.openingHours || "";
+        if (adminRestaurantAddress) adminRestaurantAddress.value = restaurant.address || "";
+        if (adminRestaurantFeature) adminRestaurantFeature.value = restaurant.feature || "";
+        if (adminRestaurantSaveBtn) adminRestaurantSaveBtn.textContent = "儲存修改";
+        if (adminRestaurantCancelEdit) adminRestaurantCancelEdit.hidden = false;
+        adminRestaurantName?.focus();
+    }
+
+    function renderAdminRestaurants(restaurants = []) {
+        if (!adminRestaurantList) return;
+        adminRestaurantList.innerHTML = "";
+
+        if (!restaurants.length) {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有餐廳資料。</td>`;
+            adminRestaurantList.appendChild(row);
+            return;
+        }
+
+        restaurants.forEach((restaurant) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${restaurant.id}</td>
+                <td>
+                    <strong>${restaurant.name || "未命名"}</strong><br />
+                    <span class="admin-muted">${restaurant.address || ""}</span>
+                </td>
+                <td>${restaurant.category || "-"}<br /><span class="admin-muted">${restaurant.price_level || "$"}</span></td>
+                <td>${restaurant.opening_hours || "-"}</td>
+                <td class="admin-feature-cell">${restaurant.feature || "-"}</td>
+                <td></td>
+            `;
+
+            const actionCell = row.querySelector("td:last-child");
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "admin-secondary-btn";
+            editBtn.textContent = "編輯";
+            editBtn.addEventListener("click", () => fillRestaurantForm(restaurant));
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "admin-danger-btn";
+            deleteBtn.textContent = "刪除";
+            deleteBtn.disabled = Number(restaurant.party_count || 0) > 0;
+            deleteBtn.title = deleteBtn.disabled ? "已有飯局使用此餐廳，不能刪除" : "刪除餐廳";
+            deleteBtn.addEventListener("click", async () => {
+                if (!confirm(`確定要刪除餐廳「${restaurant.name}」嗎？`)) return;
+                await api.adminDeleteRestaurant(restaurant.id, currentUser.id);
+                await loadAdminDashboard();
+                await loadRestaurants();
+            });
+
+            actionCell.append(editBtn, deleteBtn);
+            adminRestaurantList.appendChild(row);
+        });
     }
 
     function renderAdminUsers(users = []) {
@@ -2824,7 +3700,8 @@
                 <td>${party.id}</td>
                 <td>
                     <strong>${party.title || "飯局"}</strong><br />
-                    <span class="admin-muted">${party.store || ""}・${party.meal_type || ""}</span>
+                    <span class="admin-muted">${party.store || ""}・${party.meal_type || ""}</span><br />
+                    <span class="admin-muted">${party.restaurant_category || ""} ${party.restaurant_price_level || ""}</span>
                 </td>
                 <td>${party.host_name || party.host_account || "-"}</td>
                 <td>${party.party_time || "-"}<br /><span class="admin-muted">${party.current_people || 0} / ${party.max_people || 0} 人</span></td>
@@ -2902,6 +3779,111 @@
         });
     }
 
+
+    function getAdminReportTypeText(type) {
+        const labels = {
+            party: "飯局",
+            user: "使用者",
+            chat: "聊天訊息",
+        };
+        return labels[type] || type || "檢舉";
+    }
+
+    function getAdminReportStatusText(status) {
+        const labels = {
+            pending: "待處理",
+            resolved: "已處理",
+            rejected: "已駁回",
+        };
+        return labels[status] || status || "待處理";
+    }
+
+    function getAdminReportTargetText(report) {
+        if (report.target_type === "party") return report.target_party_title || `飯局 #${report.target_id}`;
+        if (report.target_type === "user") return report.target_user_name || report.target_user_account || `使用者 #${report.target_id}`;
+        if (report.target_type === "chat") return report.chat_party_title || `訊息 #${report.target_id}`;
+        return `#${report.target_id}`;
+    }
+
+    function getAdminReportDetailText(report) {
+        if (report.target_type === "chat") {
+            return report.target_chat_message ? `訊息：${report.target_chat_message}` : "聊天室訊息已不存在或已刪除";
+        }
+        return report.description || "沒有補充說明。";
+    }
+
+    async function updateReportStatus(reportId, status) {
+        const note = status === "rejected" ? "檢舉內容不足，已駁回" : "管理員已完成審核";
+        await api.adminUpdateReportStatus(reportId, currentUser.id, status, note);
+        await loadAdminDashboard();
+    }
+
+    function renderAdminReports(reports = []) {
+        if (!adminReportList) return;
+        adminReportList.innerHTML = "";
+
+        if (!reports.length) {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有檢舉資料。</td>`;
+            adminReportList.appendChild(row);
+            return;
+        }
+
+        reports.forEach((report) => {
+            const row = document.createElement("tr");
+            const statusClass = `admin-report-status--${report.status || "pending"}`;
+            const detail = getAdminReportDetailText(report);
+            row.innerHTML = `
+                <td>${report.id}</td>
+                <td>
+                    <strong>${getAdminReportTypeText(report.target_type)}</strong><br />
+                    <span class="admin-muted">${getAdminReportTargetText(report)}</span>
+                </td>
+                <td>${report.reporter_name || report.reporter_account || "-"}</td>
+                <td>
+                    ${report.reason || "-"}
+                    <span class="admin-report-detail">${detail}</span>
+                </td>
+                <td><span class="${statusClass}">${getAdminReportStatusText(report.status)}</span><br /><span class="admin-muted">${formatAdminDate(report.created_at)}</span></td>
+                <td></td>
+            `;
+
+            const actionCell = row.querySelector("td:last-child");
+            if (report.status === "pending") {
+                const resolveBtn = document.createElement("button");
+                resolveBtn.type = "button";
+                resolveBtn.className = "admin-secondary-btn";
+                resolveBtn.textContent = "處理";
+                resolveBtn.addEventListener("click", async () => {
+                    if (!confirm("確認將此檢舉標記為已處理嗎？")) return;
+                    await updateReportStatus(report.id, "resolved");
+                });
+
+                const rejectBtn = document.createElement("button");
+                rejectBtn.type = "button";
+                rejectBtn.className = "admin-danger-btn";
+                rejectBtn.textContent = "駁回";
+                rejectBtn.addEventListener("click", async () => {
+                    if (!confirm("確認駁回此檢舉嗎？")) return;
+                    await updateReportStatus(report.id, "rejected");
+                });
+
+                actionCell.append(resolveBtn, rejectBtn);
+            } else {
+                const reopenBtn = document.createElement("button");
+                reopenBtn.type = "button";
+                reopenBtn.className = "admin-secondary-btn";
+                reopenBtn.textContent = "重開";
+                reopenBtn.addEventListener("click", async () => {
+                    await updateReportStatus(report.id, "pending");
+                });
+                actionCell.appendChild(reopenBtn);
+            }
+
+            adminReportList.appendChild(row);
+        });
+    }
+
     async function loadAdminDashboard() {
         if (!isLoggedIn()) {
             switchView("login");
@@ -2921,17 +3903,21 @@
             }
             setAdminMessage("讀取後台資料中...");
 
-            const [summaryResult, usersResult, partiesResult, chatsResult] = await Promise.all([
+            const [summaryResult, usersResult, partiesResult, chatsResult, restaurantsResult, reportsResult] = await Promise.all([
                 api.getAdminSummary(currentUser.id),
                 api.getAdminUsers(currentUser.id),
                 api.getAdminParties(currentUser.id),
                 api.getAdminChats(currentUser.id),
+                api.getAdminRestaurants(currentUser.id),
+                api.getAdminReports(currentUser.id),
             ]);
 
             renderAdminSummary(summaryResult.summary || {});
             renderAdminUsers(usersResult.users || []);
             renderAdminParties(partiesResult.parties || []);
             renderAdminChats(chatsResult.messages || []);
+            renderAdminRestaurants(restaurantsResult.restaurants || []);
+            renderAdminReports(reportsResult.reports || []);
             setAdminMessage("後台資料已更新。 ");
         } catch (error) {
             console.error("讀取後台資料失敗：", error);
@@ -2948,7 +3934,26 @@
      * 10. 篩選選單功能
      * ====================================================== */
     function initFilterMenu() {
-        if (!filterBtn || !filterMenu || !filterLabel) return;
+        if (!filterBtn) return;
+
+        if (advancedFilterPanel) {
+            const setAdvancedPanelOpen = (isOpen) => {
+                advancedFilterPanel.hidden = !isOpen;
+                filterBtn.setAttribute("aria-expanded", String(isOpen));
+            };
+
+            setAdvancedPanelOpen(true);
+
+            filterBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+                const isOpen = filterBtn.getAttribute("aria-expanded") === "true";
+                setAdvancedPanelOpen(!isOpen);
+            });
+
+            return;
+        }
+
+        if (!filterMenu || !filterLabel) return;
 
         function openFilterMenu() {
             filterMenu.hidden = false;
@@ -2983,8 +3988,11 @@
             });
         });
 
-        document.addEventListener("click", closeFilterMenu);
-        filterMenu.addEventListener("click", (event) => event.stopPropagation());
+        document.addEventListener("click", (event) => {
+            if (!filterMenu.hidden && !filterMenu.contains(event.target) && event.target !== filterBtn) {
+                closeFilterMenu();
+            }
+        });
     }
 
     /* ======================================================
@@ -3310,9 +4318,87 @@
             });
         });
 
+
+        detailReportBtn?.addEventListener("click", () => {
+            if (!currentParty) return;
+            openReportModal({ party: currentParty, defaultTargetType: "party" });
+        });
+
+        joinedReportBtn?.addEventListener("click", () => {
+            if (!currentParty) return;
+            openReportModal({ party: currentParty, defaultTargetType: "party" });
+        });
+
+        reportCloseBtn?.addEventListener("click", closeReportModal);
+        reportCancelBtn?.addEventListener("click", closeReportModal);
+        reportModal?.addEventListener("click", (event) => {
+            if (event.target?.hasAttribute("data-report-close")) closeReportModal();
+        });
+
+        reportForm?.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            await submitReportForm();
+        });
+
         adminRefreshBtn?.addEventListener("click", loadAdminDashboard);
+        createRestaurantSelect?.addEventListener("change", updateSelectedRestaurantInfo);
+        createNewRestaurantToggle?.addEventListener("click", () => {
+            setCustomRestaurantMode(!isCustomRestaurantMode());
+        });
+
+        adminRestaurantCancelEdit?.addEventListener("click", resetRestaurantForm);
+
+        adminRestaurantForm?.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            if (!isAdminUser() || !currentUser?.id) {
+                alert("只有管理員可以管理餐廳。 ");
+                return;
+            }
+
+            const restaurantData = getRestaurantFormData();
+            if (!restaurantData.name || !restaurantData.category || !restaurantData.priceLevel || !restaurantData.openingHours || !restaurantData.address) {
+                alert("請完整填寫餐廳名稱、類型、價格、營業時間與地址");
+                return;
+            }
+
+            try {
+                const editingId = adminRestaurantId?.value || "";
+                if (adminRestaurantSaveBtn) {
+                    adminRestaurantSaveBtn.disabled = true;
+                    adminRestaurantSaveBtn.textContent = editingId ? "儲存中..." : "新增中...";
+                }
+
+                if (editingId) {
+                    await api.adminUpdateRestaurant(editingId, currentUser.id, restaurantData);
+                } else {
+                    await api.adminCreateRestaurant(currentUser.id, restaurantData);
+                }
+
+                resetRestaurantForm();
+                await loadAdminDashboard();
+                await loadRestaurants();
+            } catch (error) {
+                console.error("儲存餐廳失敗：", error);
+                alert(error.message || "儲存餐廳失敗");
+            } finally {
+                if (adminRestaurantSaveBtn) {
+                    adminRestaurantSaveBtn.disabled = false;
+                    adminRestaurantSaveBtn.textContent = adminRestaurantId?.value ? "儲存修改" : "新增餐廳";
+                }
+            }
+        });
+
+        homePartyTabs.forEach((tab) => {
+            tab.addEventListener("click", () => {
+                setHomePartyTab(tab.dataset.homeTab || "my");
+            });
+        });
 
         searchInput?.addEventListener("input", renderHomeParties);
+        mealTypeFilter?.addEventListener("change", renderHomeParties);
+        restaurantCategoryFilter?.addEventListener("change", renderHomeParties);
+        restaurantPriceFilter?.addEventListener("change", renderHomeParties);
         availableOnlyFilter?.addEventListener("change", renderHomeParties);
 
         loginForm?.addEventListener("submit", (event) => {
@@ -3479,6 +4565,21 @@
             }
 
             try {
+                if (partyData.customRestaurant) {
+                    const restaurantResult = await api.createRestaurant(currentUser.id, partyData.customRestaurant);
+                    const createdRestaurant = mapRestaurant(restaurantResult.restaurant || {});
+                    partyData.restaurantId = createdRestaurant.id;
+                    partyData.store = createdRestaurant.name;
+                    delete partyData.customRestaurant;
+
+                    if (createdRestaurant.id && !restaurantOptions.some((restaurant) => String(restaurant.id) === String(createdRestaurant.id))) {
+                        restaurantOptions.push(createdRestaurant);
+                    }
+                    renderRestaurantSelect();
+                    if (createRestaurantSelect) createRestaurantSelect.value = createdRestaurant.id;
+                    updateSelectedRestaurantInfo();
+                }
+
                 const coverFile = createCoverFile?.files?.[0];
                 if (coverFile) {
                     partyData.imageUrl = await uploadImageFile(coverFile, "party");
@@ -3494,6 +4595,8 @@
                 );
 
                 createForm.reset();
+                resetCustomRestaurantForm();
+                updateSelectedRestaurantInfo();
 
                 await loadBackendParties();
 
@@ -3590,6 +4693,7 @@
         loadBackendParties();
         renderChatRoomList();
         renderNotifications();
+        loadRestaurants();
 
         if (isAdminUser()) {
             switchView("admin");

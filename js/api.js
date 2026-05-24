@@ -48,6 +48,17 @@ const api = {
         });
     },
 
+    getRestaurants() {
+        return requestApi("/restaurants");
+    },
+
+    createRestaurant(userId, restaurantData) {
+        return requestApi("/restaurants", {
+            method: "POST",
+            body: JSON.stringify({ userId, ...restaurantData }),
+        });
+    },
+
     createParty(partyData) {
         return requestApi("/parties", {
             method: "POST",
@@ -162,6 +173,35 @@ const api = {
         return requestApi(`/admin/chats?userId=${encodeURIComponent(userId)}`);
     },
 
+    getAdminReports(userId) {
+        return requestApi(`/admin/reports?userId=${encodeURIComponent(userId)}`);
+    },
+
+    getAdminRestaurants(userId) {
+        return requestApi(`/admin/restaurants?userId=${encodeURIComponent(userId)}`);
+    },
+
+    adminCreateRestaurant(userId, restaurantData) {
+        return requestApi("/admin/restaurants", {
+            method: "POST",
+            body: JSON.stringify({ userId, ...restaurantData }),
+        });
+    },
+
+    adminUpdateRestaurant(restaurantId, userId, restaurantData) {
+        return requestApi(`/admin/restaurants/${restaurantId}`, {
+            method: "PUT",
+            body: JSON.stringify({ userId, ...restaurantData }),
+        });
+    },
+
+    adminDeleteRestaurant(restaurantId, userId) {
+        return requestApi(`/admin/restaurants/${restaurantId}`, {
+            method: "DELETE",
+            body: JSON.stringify({ userId }),
+        });
+    },
+
     adminCancelParty(partyId, userId) {
         return requestApi(`/admin/parties/${partyId}/cancel`, {
             method: "POST",
@@ -187,6 +227,20 @@ const api = {
         return requestApi(`/admin/chats/${messageId}`, {
             method: "DELETE",
             body: JSON.stringify({ userId }),
+        });
+    },
+
+    submitReport(reportData) {
+        return requestApi("/reports", {
+            method: "POST",
+            body: JSON.stringify(reportData),
+        });
+    },
+
+    adminUpdateReportStatus(reportId, userId, status, adminNote = "") {
+        return requestApi(`/admin/reports/${reportId}/status`, {
+            method: "PUT",
+            body: JSON.stringify({ userId, status, adminNote }),
         });
     },
 

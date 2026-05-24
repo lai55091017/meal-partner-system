@@ -3,12 +3,13 @@ const pool = require("../db");
 
 const router = express.Router();
 
-let partyImageColumnReady = false;
+let partyColumnsReady = false;
 
-async function ensurePartyImageColumn() {
-  if (partyImageColumnReady) return;
+async function ensurePartyColumns() {
+  if (partyColumnsReady) return;
   await pool.query("ALTER TABLE parties ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT ''");
-  partyImageColumnReady = true;
+  await pool.query("ALTER TABLE parties ADD COLUMN IF NOT EXISTS restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE SET NULL");
+  partyColumnsReady = true;
 }
 
 async function getUserForRegularAction(db, userId) {
@@ -116,7 +117,7 @@ function buildPartyFlowInfo(party) {
  */
 router.get("/", async (req, res) => {
   try {
-    await ensurePartyImageColumn();
+    await ensurePartyColumns();
     const userId = req.query.userId ? Number(req.query.userId) : null;
 
     await markExpiredOpenPartiesEnded();
@@ -132,6 +133,13 @@ router.get("/", async (req, res) => {
         p.max_people,
         p.description,
         p.image_url,
+        p.restaurant_id,
+        r.name AS restaurant_name,
+        r.category AS restaurant_category,
+        r.price_level AS restaurant_price_level,
+        r.opening_hours AS restaurant_opening_hours,
+        r.address AS restaurant_address,
+        r.feature AS restaurant_feature,
         p.status,
         p.created_at,
         u.id AS host_id,
@@ -146,9 +154,10 @@ router.get("/", async (req, res) => {
             AND ($1::int IS NOT NULL AND pm2.user_id = $1::int)
         ) AS is_current_user_member
       FROM parties p
+      LEFT JOIN restaurants r ON r.id = p.restaurant_id
       JOIN users u ON p.host_id = u.id
       LEFT JOIN party_members pm ON p.id = pm.party_id
-      GROUP BY p.id, u.id
+      GROUP BY p.id, u.id, r.id
       ORDER BY p.created_at DESC
       `,
       [Number.isFinite(userId) ? userId : null]
@@ -173,7 +182,7 @@ router.get("/", async (req, res) => {
  */
 router.get("/:id", async (req, res) => {
   try {
-    await ensurePartyImageColumn();
+    await ensurePartyColumns();
     const { id } = req.params;
 
     const partyResult = await pool.query(
@@ -187,6 +196,13 @@ router.get("/:id", async (req, res) => {
         p.max_people,
         p.description,
         p.image_url,
+        p.restaurant_id,
+        r.name AS restaurant_name,
+        r.category AS restaurant_category,
+        r.price_level AS restaurant_price_level,
+        r.opening_hours AS restaurant_opening_hours,
+        r.address AS restaurant_address,
+        r.feature AS restaurant_feature,
         p.status,
         p.created_at,
         u.id AS host_id,
@@ -197,10 +213,11 @@ router.get("/:id", async (req, res) => {
         u.avatar AS host_avatar,
         COUNT(pm.user_id) AS current_people
       FROM parties p
+      LEFT JOIN restaurants r ON r.id = p.restaurant_id
       JOIN users u ON p.host_id = u.id
       LEFT JOIN party_members pm ON p.id = pm.party_id
       WHERE p.id = $1
-      GROUP BY p.id, u.id
+      GROUP BY p.id, u.id, r.id
       `,
       [id]
     );
@@ -252,11 +269,12 @@ router.post("/", async (req, res) => {
   const client = await pool.connect();
 
   try {
-    await ensurePartyImageColumn();
+    await ensurePartyColumns();
     const {
       title,
       hostId,
       store,
+      restaurantId,
       mealType,
       partyTime,
       maxPeople,
@@ -264,9 +282,9 @@ router.post("/", async (req, res) => {
       imageUrl,
     } = req.body;
 
-    if (!title || !hostId || !store || !mealType || !partyTime || !maxPeople) {
+    if (!title || !hostId || !restaurantId || !mealType || !partyTime || !maxPeople) {
       return res.status(400).json({
-        message: "請完整填寫飯局名稱、主辦人、店家、餐期、時間與人數上限",
+        message: "請完整填寫飯局名稱、主辦人、餐廳、餐期、時間與人數上限",
       });
     }
 
@@ -294,17 +312,36 @@ router.post("/", async (req, res) => {
       });
     }
 
+    const restaurantResult = await client.query(
+      `
+      SELECT id, name
+      FROM restaurants
+      WHERE id = $1
+      `,
+      [restaurantId]
+    );
+
+    if (restaurantResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        message: "找不到選擇的餐廳",
+      });
+    }
+
+    const selectedRestaurant = restaurantResult.rows[0];
+
     const partyResult = await client.query(
       `
       INSERT INTO parties
-      (title, host_id, store, meal_type, party_time, max_people, description, image_url, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open')
+      (title, host_id, store, restaurant_id, meal_type, party_time, max_people, description, image_url, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'open')
       RETURNING *
       `,
       [
         title,
         hostId,
-        store,
+        selectedRestaurant.name,
+        Number(restaurantId),
         mealType,
         partyTime,
         Number(maxPeople),
