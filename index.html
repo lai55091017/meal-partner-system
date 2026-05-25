@@ -1,862 +1,1595 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>飯搭子系統</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>飯搭子系統</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-
-<body>
-  <div class="app" data-view="home">
-    <header class="header">
-      <div class="header-top header-brand">
-        <div class="header-logo" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4.5 8.2c0-1.35 1.1-2.45 2.45-2.45h10.1c1.35 0 2.45 1.1 2.45 2.45v4.9A5.9 5.9 0 0 1 13.6 19H10.4a5.9 5.9 0 0 1-5.9-5.9V8.2z" />
-            <path d="M8 3.8v2.1" />
-            <path d="M16 3.8v2.1" />
-            <path d="M8.5 10.2h7" />
-            <path d="M9.7 13.7h4.6" />
-          </svg>
-        </div>
-        <div class="header-brand-text">
-          <span class="header-subtitle">Meal Partner</span>
-          <h1 class="header-title">飯搭子系統</h1>
-        </div>
-      </div>
-
-      <div class="header-banner header-banner--home" aria-label="飯搭子系統介紹">
-        <div class="header-banner-content">
-          <span class="header-banner-tag">校園約飯社群</span>
-          <h2 class="header-banner-title">今天想找誰一起吃飯？</h2>
-          <p class="header-banner-text">建立飯局、加入聚餐、聊天室討論，一起把吃飯變得更簡單。</p>
-        </div>
-        <div class="header-banner-visual" aria-hidden="true">
-          <span class="header-banner-bowl">飯</span>
-          <span class="header-banner-dot header-banner-dot--one"></span>
-          <span class="header-banner-dot header-banner-dot--two"></span>
-        </div>
-      </div>
-    </header>
-
-    <!-- 登入 / 註冊頁 -->
-    <main id="view-login" class="view view--login" aria-label="登入與註冊" hidden>
-      <section class="login-shell auth-shell">
-        <div class="login-hero" aria-hidden="true">
-          <div class="login-hero-icon">飯</div>
-          <h2 class="login-hero-title">飯搭子系統</h2>
-          <p class="login-hero-text">快速建立飯局、加入聚餐、聊天與評價成員。</p>
+  <body>
+    <div class="app" data-view="home">
+      <header class="header">
+        <div class="header-top header-brand">
+          <div class="header-logo" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M4.5 8.2c0-1.35 1.1-2.45 2.45-2.45h10.1c1.35 0 2.45 1.1 2.45 2.45v4.9A5.9 5.9 0 0 1 13.6 19H10.4a5.9 5.9 0 0 1-5.9-5.9V8.2z"
+              />
+              <path d="M8 3.8v2.1" />
+              <path d="M16 3.8v2.1" />
+              <path d="M8.5 10.2h7" />
+              <path d="M9.7 13.7h4.6" />
+            </svg>
+          </div>
+          <div class="header-brand-text">
+            <span class="header-subtitle">Meal Partner</span>
+            <h1 class="header-title">飯搭子系統</h1>
+          </div>
         </div>
 
-        <article class="login-card auth-card">
-          <div class="auth-tabs" role="tablist" aria-label="帳號操作">
-            <button type="button" class="auth-tab auth-tab--active" id="login-tab-btn" role="tab" aria-selected="true"
-              aria-controls="login-form">
-              登入
+        <div
+          class="header-banner header-banner--home"
+          aria-label="飯搭子系統介紹"
+        >
+          <div class="header-banner-content">
+            <span class="header-banner-tag">校園約飯社群</span>
+            <h2 class="header-banner-title">今天想找誰一起吃飯？</h2>
+            <p class="header-banner-text">
+              建立飯局、加入聚餐、聊天室討論，一起把吃飯變得更簡單。
+            </p>
+          </div>
+          <div class="header-banner-visual" aria-hidden="true">
+            <span class="header-banner-bowl">飯</span>
+            <span class="header-banner-dot header-banner-dot--one"></span>
+            <span class="header-banner-dot header-banner-dot--two"></span>
+          </div>
+        </div>
+      </header>
+
+      <!-- 登入 / 註冊頁 -->
+      <main
+        id="view-login"
+        class="view view--login"
+        aria-label="登入與註冊"
+        hidden
+      >
+        <section class="login-shell auth-shell">
+          <div class="login-hero" aria-hidden="true">
+            <div class="login-hero-icon">飯</div>
+            <h2 class="login-hero-title">飯搭子系統</h2>
+            <p class="login-hero-text">
+              快速建立飯局、加入聚餐、聊天與評價成員。
+            </p>
+          </div>
+
+          <article class="login-card auth-card">
+            <div class="auth-tabs" role="tablist" aria-label="帳號操作">
+              <button
+                type="button"
+                class="auth-tab auth-tab--active"
+                id="login-tab-btn"
+                role="tab"
+                aria-selected="true"
+                aria-controls="login-form"
+              >
+                登入
+              </button>
+              <button
+                type="button"
+                class="auth-tab"
+                id="register-tab-btn"
+                role="tab"
+                aria-selected="false"
+                aria-controls="register-form"
+              >
+                註冊
+              </button>
+            </div>
+
+            <h2 class="login-title" id="auth-title">登入帳號</h2>
+            <p class="login-subtitle" id="auth-subtitle">
+              請輸入帳號與密碼進入系統
+            </p>
+
+            <form id="login-form" class="login-form" novalidate>
+              <div class="login-row">
+                <label class="login-label" for="login-account">帳號</label>
+                <input
+                  type="text"
+                  class="login-input"
+                  id="login-account"
+                  name="account"
+                  placeholder="請輸入學號或帳號"
+                  autocomplete="username"
+                />
+              </div>
+
+              <div class="login-row">
+                <label class="login-label" for="login-password">密碼</label>
+                <input
+                  type="password"
+                  class="login-input"
+                  id="login-password"
+                  name="password"
+                  placeholder="請輸入密碼"
+                  autocomplete="current-password"
+                />
+              </div>
+
+              <p
+                id="login-message"
+                class="login-message"
+                aria-live="polite"
+              ></p>
+
+              <button type="submit" class="login-submit">Login</button>
+            </form>
+
+            <form
+              id="register-form"
+              class="login-form register-form"
+              novalidate
+              hidden
+            >
+              <div class="login-row">
+                <label class="login-label" for="register-account">帳號</label>
+                <input
+                  type="text"
+                  class="login-input"
+                  id="register-account"
+                  name="account"
+                  placeholder="請輸入學號或帳號"
+                  autocomplete="username"
+                />
+              </div>
+
+              <div class="login-row">
+                <label class="login-label" for="register-name">姓名</label>
+                <input
+                  type="text"
+                  class="login-input"
+                  id="register-name"
+                  name="name"
+                  placeholder="請輸入姓名"
+                  autocomplete="name"
+                />
+              </div>
+
+              <div class="login-row">
+                <label class="login-label" for="register-password">密碼</label>
+                <input
+                  type="password"
+                  class="login-input"
+                  id="register-password"
+                  name="password"
+                  placeholder="至少 4 個字元"
+                  autocomplete="new-password"
+                />
+              </div>
+
+              <div class="login-row">
+                <label class="login-label" for="register-password-confirm"
+                  >確認密碼</label
+                >
+                <input
+                  type="password"
+                  class="login-input"
+                  id="register-password-confirm"
+                  name="passwordConfirm"
+                  placeholder="請再次輸入密碼"
+                  autocomplete="new-password"
+                />
+              </div>
+
+              <p
+                id="register-message"
+                class="login-message register-message"
+                aria-live="polite"
+              ></p>
+
+              <button type="submit" class="login-submit register-submit">
+                Register
+              </button>
+            </form>
+
+            <p class="login-note">
+              請使用已註冊帳號登入，或切換到註冊建立新帳號。
+            </p>
+          </article>
+        </section>
+      </main>
+
+      <!-- 首頁 -->
+      <main id="view-home" class="view view--active" aria-label="首頁">
+        <section class="home-query-panel" aria-label="飯局查詢與篩選">
+          <div class="toolbar home-query-toolbar">
+            <label class="search-bar home-query-search" for="search-input">
+              <span class="search-icon" aria-hidden="true">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3-3" />
+                </svg>
+              </span>
+              <input
+                id="search-input"
+                type="search"
+                placeholder="搜尋飯局、主辦人、餐廳名稱..."
+                autocomplete="off"
+                aria-label="搜尋飯局、主辦人、餐廳名稱"
+              />
+            </label>
+
+            <button
+              type="button"
+              class="filter-btn home-query-toggle"
+              id="filter-btn"
+              aria-expanded="true"
+              aria-controls="advanced-filter-panel"
+            >
+              <span id="filter-label">進階篩選</span>
+              <span class="filter-caret" aria-hidden="true">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M6 15l6-6 6 6" />
+                </svg>
+              </span>
             </button>
-            <button type="button" class="auth-tab" id="register-tab-btn" role="tab" aria-selected="false"
-              aria-controls="register-form">
-              註冊
-            </button>
           </div>
 
-          <h2 class="login-title" id="auth-title">登入帳號</h2>
-          <p class="login-subtitle" id="auth-subtitle">請輸入帳號與密碼進入系統</p>
-
-          <form id="login-form" class="login-form" novalidate>
-            <div class="login-row">
-              <label class="login-label" for="login-account">帳號</label>
-              <input type="text" class="login-input" id="login-account" name="account" placeholder="請輸入學號或帳號"
-                autocomplete="username" />
-            </div>
-
-            <div class="login-row">
-              <label class="login-label" for="login-password">密碼</label>
-              <input type="password" class="login-input" id="login-password" name="password" placeholder="請輸入密碼"
-                autocomplete="current-password" />
-            </div>
-
-            <p id="login-message" class="login-message" aria-live="polite"></p>
-
-            <button type="submit" class="login-submit">Login</button>
-          </form>
-
-          <form id="register-form" class="login-form register-form" novalidate hidden>
-            <div class="login-row">
-              <label class="login-label" for="register-account">帳號</label>
-              <input type="text" class="login-input" id="register-account" name="account" placeholder="請輸入學號或帳號"
-                autocomplete="username" />
-            </div>
-
-            <div class="login-row">
-              <label class="login-label" for="register-name">姓名</label>
-              <input type="text" class="login-input" id="register-name" name="name" placeholder="請輸入姓名"
-                autocomplete="name" />
-            </div>
-
-            <div class="login-row">
-              <label class="login-label" for="register-password">密碼</label>
-              <input type="password" class="login-input" id="register-password" name="password" placeholder="至少 4 個字元"
-                autocomplete="new-password" />
-            </div>
-
-            <div class="login-row">
-              <label class="login-label" for="register-password-confirm">確認密碼</label>
-              <input type="password" class="login-input" id="register-password-confirm" name="passwordConfirm"
-                placeholder="請再次輸入密碼" autocomplete="new-password" />
-            </div>
-
-            <p id="register-message" class="login-message register-message" aria-live="polite"></p>
-
-            <button type="submit" class="login-submit register-submit">Register</button>
-          </form>
-
-          <p class="login-note">請使用已註冊帳號登入，或切換到註冊建立新帳號。</p>
-        </article>
-      </section>
-    </main>
-
-    <!-- 首頁 -->
-    <main id="view-home" class="view view--active" aria-label="首頁">
-      <section class="home-query-panel" aria-label="飯局查詢與篩選">
-        <div class="toolbar home-query-toolbar">
-          <label class="search-bar home-query-search" for="search-input">
-            <span class="search-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="7" />
-                <path d="M20 20l-3-3" />
-              </svg>
-            </span>
-            <input id="search-input" type="search" placeholder="搜尋飯局、主辦人、餐廳名稱..." autocomplete="off"
-              aria-label="搜尋飯局、主辦人、餐廳名稱" />
-          </label>
-
-          <button type="button" class="filter-btn home-query-toggle" id="filter-btn" aria-expanded="true"
-            aria-controls="advanced-filter-panel">
-            <span id="filter-label">進階篩選</span>
-            <span class="filter-caret" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 15l6-6 6 6" />
-              </svg>
-            </span>
-          </button>
-        </div>
-
-        <div class="filter-extra filter-extra--advanced home-query-advanced" id="advanced-filter-panel"
-          aria-label="進階篩選">
-          <div class="home-filter-row">
-            <label class="home-filter-field" for="meal-type-filter">
-              <span>餐期</span>
-              <select id="meal-type-filter" class="home-filter-select">
-                <option value="全部">全部餐期</option>
-                <option value="早餐">早餐</option>
-                <option value="午餐">午餐</option>
-                <option value="晚餐">晚餐</option>
-                <option value="宵夜">宵夜</option>
-              </select>
-            </label>
-
-            <label class="home-filter-field" for="restaurant-category-filter">
-              <span>餐廳類型</span>
-              <select id="restaurant-category-filter" class="home-filter-select">
-                <option value="全部">全部類型</option>
-              </select>
-            </label>
-
-            <label class="home-filter-field" for="restaurant-price-filter">
-              <span>價格</span>
-              <select id="restaurant-price-filter" class="home-filter-select">
-                <option value="全部">全部價格</option>
-                <option value="$">$ 平價</option>
-                <option value="$$">$$ 中等</option>
-                <option value="$$$">$$$ 較高</option>
-              </select>
-            </label>
-
-            <label class="available-filter home-query-available">
-              <input type="checkbox" id="available-only-filter" />
-              <span>只顯示尚未額滿</span>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <div class="home-party-tabs" role="tablist" aria-label="飯局分類切換">
-        <button type="button" class="home-party-tab home-party-tab--active" id="home-tab-my" data-home-tab="my"
-          role="tab" aria-selected="true" aria-controls="my-parties-section">
-          我的飯局 <span id="my-party-tab-count">0</span>
-        </button>
-        <button type="button" class="home-party-tab" id="home-tab-other" data-home-tab="other" role="tab"
-          aria-selected="false" aria-controls="other-parties-section">
-          其他飯局 <span id="other-party-tab-count">0</span>
-        </button>
-      </div>
-
-      <section class="section home-party-panel home-party-panel--active" id="my-parties-section" aria-labelledby="my-parties-heading"
-        role="tabpanel" aria-describedby="home-tab-my">
-        <div class="section-header">
-          <h2 id="my-parties-heading" class="section-title">我的飯局</h2>
-          <span class="section-hint">包含你建立與已加入的飯局</span>
-        </div>
-        <div id="my-party-list" class="party-list" aria-live="polite"></div>
-        <p id="my-party-empty" class="empty-text" hidden>目前尚未建立飯局。</p>
-      </section>
-
-      <section class="section home-party-panel" id="other-parties-section" aria-labelledby="other-parties-heading" role="tabpanel"
-        aria-describedby="home-tab-other" hidden>
-        <h2 id="other-parties-heading" class="section-title">其他飯局</h2>
-        <article class="party-card party-card--other" id="other-party-card" role="button" tabindex="0"
-          aria-label="查看其他飯局詳情" data-party-id="other-demo-party" data-party-name="午餐找飯搭子" data-host="王小明"
-          data-store="學餐二樓" data-time="今天 12:20" data-meal-type="午餐" data-max-members="4"
-          data-description="想找同學一起吃午餐，可以輕鬆聊天，也可以討論課業。"
-          data-members='[{"id":"host-other-demo-party","name":"王小明","role":"主辦人"}]'>
-          <div class="party-card-thumb" aria-hidden="true"></div>
-          <div class="party-card-body">
-            <div class="party-card-grid">
-              <span class="party-label">午餐找飯搭子</span>
-              <span class="party-label party-label--right">王小明</span>
-              <span class="party-label">學餐二樓</span>
-              <span class="party-label party-label--right">今天 12:20</span>
-              <span class="party-label party-label--meal">午餐</span>
-              <span class="party-label party-label--people">1 / 4 人</span>
-              <span class="party-card-status party-status--open" data-status="open">招募中</span>
-            </div>
-          </div>
-        </article>
-      </section>
-    </main>
-
-    <!-- 通知 -->
-    <main id="view-notifications" class="view view--notifications" aria-label="通知" hidden>
-      <section class="notice-panel" aria-labelledby="notice-title">
-        <div class="notice-header">
-          <h2 id="notice-title" class="notice-page-title">通知中心</h2>
-          <p class="notice-page-desc">飯局建立、加入、退出、取消與聊天室新訊息會顯示在這裡。</p>
-        </div>
-        <ul class="notice-list" id="notification-list" role="list" aria-live="polite"></ul>
-        <p class="empty-text notice-empty" id="notification-empty">目前沒有通知。</p>
-      </section>
-    </main>
-
-    <!-- 聊天室 -->
-    <main id="view-chat" class="view view--chat" aria-label="聊天室" hidden>
-      <section class="chat-layout" aria-label="飯局聊天室">
-        <section class="chat-list-panel" aria-labelledby="chat-list-title">
-          <div class="chat-section-header">
-            <h2 id="chat-list-title" class="chat-section-title">飯局聊天室</h2>
-            <p class="chat-section-desc">只會顯示你建立或已加入的飯局。</p>
-          </div>
-          <ul class="chat-list" id="chat-room-list" role="list" aria-live="polite"></ul>
-          <p class="empty-text chat-empty" id="chat-empty">目前沒有可使用的聊天室，請先建立或加入飯局。</p>
-        </section>
-
-        <section class="chat-room-panel" id="chat-room-panel" aria-label="聊天室內容" hidden>
-          <div class="chat-room-header">
-            <button type="button" class="chat-back-btn" id="chat-back-btn">返回列表</button>
-            <div>
-              <h2 class="chat-room-title" id="chat-room-title">聊天室</h2>
-              <p class="chat-room-meta" id="chat-room-meta">飯局資訊</p>
-            </div>
-          </div>
-
-          <ul class="chat-message-list" id="chat-message-list" role="list" aria-live="polite"></ul>
-
-          <form class="chat-form" id="chat-form" novalidate>
-            <textarea class="chat-input" id="chat-input" rows="2" placeholder="輸入訊息，例如：我大概 12:20 到"
-              aria-label="輸入聊天訊息"></textarea>
-            <button type="submit" class="chat-send-btn">送出</button>
-          </form>
-        </section>
-      </section>
-    </main>
-
-    <!-- 飯局詳情 -->
-    <main id="view-party-detail" class="view view--party-detail" aria-label="飯局詳情" hidden>
-      <article class="party-detail-card">
-        <button type="button" class="party-report-btn" id="detail-report-btn" aria-label="檢舉飯局或主辦人" title="檢舉">⚑</button>
-        <div class="party-detail-image" id="detail-party-image" aria-hidden="true"></div>
-        <div class="party-detail-info party-detail-info--full">
-          <h2 class="party-detail-title" id="detail-party-name">飯局名稱</h2>
-          <dl class="party-detail-list">
-            <div class="party-detail-row">
-              <dt>主辦人</dt>
-              <dd id="detail-host">約飯人 先生/小姐</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>店家</dt>
-              <dd id="detail-store">店家名稱</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>時間</dt>
-              <dd id="detail-time">時間</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>餐期</dt>
-              <dd id="detail-meal-type">午餐</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>人數</dt>
-              <dd id="detail-people">1 / 4 人</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>狀態</dt>
-              <dd><span class="party-detail-status party-status--open" id="detail-status" data-status="open">招募中</span>
-              </dd>
-            </div>
-          </dl>
-          <section class="party-restaurant-info" id="detail-restaurant-info" aria-label="餐廳資訊" hidden>
-            <h3 class="party-description-title">餐廳資訊</h3>
-            <p><strong id="detail-restaurant-name">餐廳名稱</strong></p>
-            <p><span id="detail-restaurant-category">類型</span>｜<span id="detail-restaurant-price">價格</span>｜<span id="detail-restaurant-hours">營業時間</span></p>
-            <p id="detail-restaurant-address">地址</p>
-            <p id="detail-restaurant-feature">特色</p>
-          </section>
-          <section class="party-description" aria-label="飯局介紹">
-            <h3 class="party-description-title">飯局介紹</h3>
-            <p id="detail-description">尚未填寫飯局介紹。</p>
-          </section>
-        </div>
-        <section class="host-preview" aria-label="約飯人簡介">
-          <h3 class="host-preview-title">約飯人介紹</h3>
-          <p class="host-preview-name" id="host-preview-name">約飯人 先生/小姐</p>
-          <p class="host-preview-meta" id="host-preview-diet">飲食偏好尚未填寫</p>
-          <p class="host-preview-bio" id="host-preview-bio">這裡會顯示約飯人的個人介紹，讓其他人加入飯局前可以先了解對方。</p>
-        </section>
-        <div class="party-detail-actions">
-          <button type="button" class="party-detail-join" id="party-join-btn">join</button>
-          <button type="button" class="party-detail-delete-record" id="party-detail-delete-btn" hidden>刪除紀錄</button>
-        </div>
-      </article>
-    </main>
-
-    <!-- 飯局詳情（已加入） -->
-    <main id="view-party-joined" class="view view--party-joined" aria-label="飯局成員" hidden>
-      <article class="party-detail-card">
-        <button type="button" class="party-report-btn" id="joined-report-btn" aria-label="檢舉飯局或主辦人" title="檢舉">⚑</button>
-        <div class="party-detail-image" id="joined-party-image" aria-hidden="true"></div>
-        <div class="party-detail-info party-detail-info--full">
-          <h2 class="party-detail-title" id="joined-party-name">飯局名稱</h2>
-          <dl class="party-detail-list">
-            <div class="party-detail-row">
-              <dt>主辦人</dt>
-              <dd id="joined-host">約飯人 先生/小姐</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>店家</dt>
-              <dd id="joined-store">店家名稱</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>時間</dt>
-              <dd id="joined-time">時間</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>餐期</dt>
-              <dd id="joined-meal-type">午餐</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>人數</dt>
-              <dd id="joined-people">1 / 4 人</dd>
-            </div>
-            <div class="party-detail-row">
-              <dt>狀態</dt>
-              <dd><span class="party-detail-status party-status--open" id="joined-status" data-status="open">招募中</span>
-              </dd>
-            </div>
-          </dl>
-          <section class="party-restaurant-info" id="joined-restaurant-info" aria-label="餐廳資訊" hidden>
-            <h3 class="party-description-title">餐廳資訊</h3>
-            <p><strong id="joined-restaurant-name">餐廳名稱</strong></p>
-            <p><span id="joined-restaurant-category">類型</span>｜<span id="joined-restaurant-price">價格</span>｜<span id="joined-restaurant-hours">營業時間</span></p>
-            <p id="joined-restaurant-address">地址</p>
-            <p id="joined-restaurant-feature">特色</p>
-          </section>
-          <section class="party-description" aria-label="飯局介紹">
-            <h3 class="party-description-title">飯局介紹</h3>
-            <p id="joined-description">尚未填寫飯局介紹。</p>
-          </section>
-        </div>
-        <section class="joined-members-panel" aria-label="已加入成員">
-          <div class="joined-members-header">
-            <h3 class="joined-members-title">已加入成員</h3>
-            <span class="joined-members-count" id="joined-members-count">0 人</span>
-          </div>
-          <ul class="party-members" id="joined-member-list" aria-label="已加入成員"></ul>
-        </section>
-        <div class="party-action-row">
-          <button type="button" class="party-detail-chat" id="party-chat-btn">聊天室</button>
-          <button type="button" class="party-detail-leave" id="party-leave-btn" hidden>退出飯局</button>
-          <button type="button" class="party-detail-cancel" id="party-cancel-btn" hidden>取消飯局</button>
-          <button type="button" class="party-detail-rate" id="party-rate-btn">評價</button>
-        </div>
-      </article>
-    </main>
-
-    <!-- 評價 -->
-    <main id="view-rating" class="view view--rating" aria-label="評價成員" hidden>
-      <article class="rating-card rating-card--complete">
-        <header class="rating-header">
-          <h2 class="rating-title" id="rating-party-title">評價飯局</h2>
-          <p class="rating-desc">飯局結束後才能評價；同一場飯局每位使用者只能送出一次評價。</p>
-        </header>
-        <p class="rating-message" id="rating-message" aria-live="polite"></p>
-        <ul class="rating-list" id="rating-list"></ul>
-        <button type="button" class="rating-submit" id="rating-submit-btn">送出評價</button>
-      </article>
-    </main>
-
-    <!-- 新增飯局 -->
-    <main id="view-create" class="view view--create" aria-label="新增飯局" hidden>
-      <article class="create-card">
-        <form id="create-form" class="create-form" novalidate>
-          <div class="create-row">
-            <label class="create-label" for="create-party-name">飯局名稱</label>
-            <input type="text" class="create-input" id="create-party-name" name="partyName" />
-          </div>
-          <div class="create-row create-row--restaurant">
-            <label class="create-label" for="create-restaurant">餐廳選擇</label>
-            <div class="create-restaurant-control">
-              <select class="create-input create-select" id="create-restaurant" name="restaurantId">
-                <option value="">讀取餐廳清單中...</option>
-              </select>
-              <button type="button" class="create-secondary-btn create-new-restaurant-btn" id="create-new-restaurant-toggle">＋ 新增其他餐廳</button>
-            </div>
-            <input type="hidden" id="create-store" name="store" />
-          </div>
-          <div class="create-restaurant-info" id="create-restaurant-info" hidden>
-            <p><strong id="create-restaurant-name">餐廳名稱</strong></p>
-            <p><span id="create-restaurant-category">類型</span>｜<span id="create-restaurant-price">價格</span>｜<span id="create-restaurant-hours">營業時間</span></p>
-            <p id="create-restaurant-address">地址</p>
-            <p id="create-restaurant-feature">特色</p>
-          </div>
-          <div class="create-custom-restaurant" id="create-custom-restaurant" hidden>
-            <p class="create-custom-restaurant-title">新增其他餐廳</p>
-            <div class="create-custom-restaurant-grid">
-              <label class="create-custom-field" for="custom-restaurant-name">
-                <span>餐廳名稱</span>
-                <input type="text" class="create-input" id="custom-restaurant-name" placeholder="例如：小牛炸雞飯" />
+          <div
+            class="filter-extra filter-extra--advanced home-query-advanced"
+            id="advanced-filter-panel"
+            aria-label="進階篩選"
+          >
+            <div class="home-filter-row">
+              <label class="home-filter-field" for="meal-type-filter">
+                <span>餐期</span>
+                <select id="meal-type-filter" class="home-filter-select">
+                  <option value="全部">全部餐期</option>
+                  <option value="早餐">早餐</option>
+                  <option value="午餐">午餐</option>
+                  <option value="晚餐">晚餐</option>
+                  <option value="宵夜">宵夜</option>
+                </select>
               </label>
-              <label class="create-custom-field" for="custom-restaurant-category">
-                <span>類型</span>
-                <input type="text" class="create-input" id="custom-restaurant-category" placeholder="例如：便當、咖哩、麵食" />
+
+              <label class="home-filter-field" for="restaurant-category-filter">
+                <span>餐廳類型</span>
+                <select
+                  id="restaurant-category-filter"
+                  class="home-filter-select"
+                >
+                  <option value="全部">全部類型</option>
+                </select>
               </label>
-              <label class="create-custom-field" for="custom-restaurant-price">
+
+              <label class="home-filter-field" for="restaurant-price-filter">
                 <span>價格</span>
-                <select class="create-input create-select" id="custom-restaurant-price">
+                <select id="restaurant-price-filter" class="home-filter-select">
+                  <option value="全部">全部價格</option>
                   <option value="$">$ 平價</option>
                   <option value="$$">$$ 中等</option>
                   <option value="$$$">$$$ 較高</option>
                 </select>
               </label>
-              <label class="create-custom-field" for="custom-restaurant-hours">
-                <span>營業時間</span>
-                <input type="text" class="create-input" id="custom-restaurant-hours" placeholder="例如：11:00-20:00" />
-              </label>
-              <label class="create-custom-field" for="custom-restaurant-address">
-                <span>地址</span>
-                <input type="text" class="create-input" id="custom-restaurant-address" placeholder="例如：龍潭路 123 號" />
-              </label>
-              <label class="create-custom-field create-custom-field--full" for="custom-restaurant-feature">
-                <span>特色</span>
-                <input type="text" class="create-input" id="custom-restaurant-feature" placeholder="例如：便宜、份量大、出餐快" />
+
+              <label class="available-filter home-query-available">
+                <input type="checkbox" id="available-only-filter" />
+                <span>只顯示尚未額滿</span>
               </label>
             </div>
-            <p class="create-file-hint">送出飯局時，會先把這間餐廳新增進資料庫，再建立飯局。</p>
-          </div>
-          <div class="create-row">
-            <label class="create-label" for="create-time">時間</label>
-            <select class="create-input create-select" id="create-time" name="time">
-              <option value="今天 08:00">今天 08:00</option>
-              <option value="今天 09:00">今天 09:00</option>
-              <option value="今天 10:00">今天 10:00</option>
-              <option value="今天 11:00">今天 11:00</option>
-              <option value="今天 12:00">今天 12:00</option>
-              <option value="今天 12:30">今天 12:30</option>
-              <option value="今天 13:00">今天 13:00</option>
-              <option value="今天 17:30">今天 17:30</option>
-              <option value="今天 18:00">今天 18:00</option>
-              <option value="今天 18:30" selected>今天 18:30</option>
-              <option value="今天 19:00">今天 19:00</option>
-              <option value="今天 20:00">今天 20:00</option>
-              <option value="今天 21:00">今天 21:00</option>
-              <option value="今天 22:00">今天 22:00</option>
-            </select>
-          </div>
-          <div class="create-row">
-            <label class="create-label" for="create-meal-type">餐期</label>
-            <select class="create-input create-select" id="create-meal-type" name="mealType">
-              <option value="早餐">早餐</option>
-              <option value="午餐" selected>午餐</option>
-              <option value="晚餐">晚餐</option>
-              <option value="宵夜">宵夜</option>
-            </select>
-          </div>
-          <div class="create-row">
-            <label class="create-label" for="create-max-members">人數上限</label>
-            <input type="number" class="create-input" id="create-max-members" name="maxMembers" min="2" max="10"
-              placeholder="例如：4" />
-          </div>
-          <div class="create-row create-row--file">
-            <label class="create-label" for="create-cover-file">飯局封面</label>
-            <div class="create-file-box">
-              <input type="file" class="create-file-input" id="create-cover-file" name="cover" accept="image/*" />
-              <p class="create-file-hint">可選，支援 jpg / png / webp，展示用會存到後端 uploads 資料夾。</p>
-            </div>
-          </div>
-          <div class="create-row create-row--textarea">
-            <label class="create-label" for="create-description">飯局介紹</label>
-            <textarea class="create-input create-textarea" id="create-description" name="description" rows="4"
-              placeholder="例如：想找同學一起吃晚餐，可以聊天或討論作業。"></textarea>
-          </div>
-          <button type="submit" class="create-submit">Create</button>
-        </form>
-      </article>
-    </main>
-
-    <!-- 個人帳號 -->
-    <main id="view-profile" class="view view--profile" aria-label="個人帳號" hidden>
-      <article class="profile-card profile-card--editable">
-        <section class="profile-summary" aria-label="個人資料摘要">
-          <label class="profile-avatar profile-avatar--editable" for="profile-avatar-file" aria-label="上傳頭像">
-            <img id="profile-avatar-preview" class="profile-avatar-preview" alt="個人頭像預覽" hidden />
-            <svg class="profile-avatar-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path
-                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-            </svg>
-            <span class="profile-avatar-edit">更換頭像</span>
-          </label>
-          <input type="file" id="profile-avatar-file" accept="image/*" hidden />
-
-          <div class="profile-summary-text">
-            <label class="profile-label profile-label--name" for="profile-name-input">姓名</label>
-            <input type="text" class="profile-name-input" id="profile-name-input" value="約飯人 先生/小姐" readonly />
-            <p class="profile-hint">完善資料後，其他人加入飯局前可以更了解你。</p>
-          </div>
-
-          <div class="profile-actions">
-            <button type="button" class="profile-edit" id="profile-edit-btn" aria-label="編輯個人資料">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <path d="M15 7l2 2-8 8H7v-2l8-8z" />
-              </svg>
-              <span>編輯</span>
-            </button>
-            <button type="button" class="profile-save" id="profile-save-btn" hidden>儲存</button>
           </div>
         </section>
 
-        <form id="profile-form" class="profile-form" novalidate>
-          <section class="profile-panel" aria-labelledby="profile-basic-title">
-            <h2 id="profile-basic-title" class="profile-panel-title">基本資料</h2>
-            <div class="profile-fields profile-fields--grid">
-              <div class="profile-row">
-                <label class="profile-label" for="profile-student-id">學號</label>
-                <input type="text" class="profile-input" id="profile-student-id" readonly />
-              </div>
-              <div class="profile-row profile-row--department">
-                <label class="profile-label" for="profile-department">系所</label>
-                <input type="text" class="profile-input" id="profile-department" placeholder="例如：資訊管理系" readonly />
-              </div>
-              <div class="profile-row profile-row--rating">
-                <span class="profile-label">平均評分</span>
-                <span class="profile-rating-summary" id="profile-average-rating">尚無評價</span>
-              </div>
-            </div>
-          </section>
+        <div class="home-party-tabs" role="tablist" aria-label="飯局分類切換">
+          <button
+            type="button"
+            class="home-party-tab home-party-tab--active"
+            id="home-tab-my"
+            data-home-tab="my"
+            role="tab"
+            aria-selected="true"
+            aria-controls="my-parties-section"
+          >
+            我的飯局 <span id="my-party-tab-count">0</span>
+          </button>
+          <button
+            type="button"
+            class="home-party-tab"
+            id="home-tab-other"
+            data-home-tab="other"
+            role="tab"
+            aria-selected="false"
+            aria-controls="other-parties-section"
+          >
+            其他飯局 <span id="other-party-tab-count">0</span>
+          </button>
+        </div>
 
-          <section class="profile-panel" aria-labelledby="profile-preference-title">
-            <h2 id="profile-preference-title" class="profile-panel-title">飲食偏好</h2>
-            <div class="preference-group">
-              <p class="preference-title">飲食習慣</p>
-              <label class="preference-chip"><input type="checkbox" name="diet" value="素食" disabled />素食</label>
-              <label class="preference-chip"><input type="checkbox" name="diet" value="不吃辣" disabled />不吃辣</label>
-              <label class="preference-chip"><input type="checkbox" name="diet" value="可吃辣" disabled />可吃辣</label>
-              <label class="preference-chip"><input type="checkbox" name="diet" value="不吃牛" disabled />不吃牛</label>
-            </div>
-            <div class="preference-group">
-              <p class="preference-title">喜歡類型</p>
-              <label class="preference-chip"><input type="checkbox" name="cuisine" value="中式" disabled />中式</label>
-              <label class="preference-chip"><input type="checkbox" name="cuisine" value="日式" disabled />日式</label>
-              <label class="preference-chip"><input type="checkbox" name="cuisine" value="速食" disabled />速食</label>
-              <label class="preference-chip"><input type="checkbox" name="cuisine" value="咖啡廳" disabled />咖啡廳</label>
-            </div>
-          </section>
-
-          <section class="profile-panel profile-panel--bio" aria-labelledby="profile-bio-title">
-            <h2 id="profile-bio-title" class="profile-panel-title">個人介紹</h2>
-            <textarea id="profile-bio" class="profile-bio" rows="5" placeholder="例如：我喜歡安靜聊天、可以一起嘗試新餐廳，平常比較常吃日式和簡餐。"
-              readonly></textarea>
-          </section>
-
-          <section class="profile-panel profile-panel--reviews" aria-labelledby="profile-review-title">
-            <h2 id="profile-review-title" class="profile-panel-title">評價紀錄</h2>
-            <p class="profile-review-empty" id="profile-review-empty">目前尚未收到評價。</p>
-            <ul class="profile-review-list" id="profile-review-list"></ul>
-          </section>
-        </form>
-
-        <button type="button" class="profile-signout" id="profile-signout">sign out</button>
-      </article>
-    </main>
-
-
-    <!-- 後台管理 -->
-    <main id="view-admin" class="view view--admin" aria-label="後台管理" hidden>
-      <section class="admin-panel" aria-labelledby="admin-title">
-        <div class="admin-header">
-          <div>
-            <h2 id="admin-title" class="admin-title">後台管理</h2>
-            <p class="admin-desc">管理使用者、飯局與聊天室訊息。此頁僅管理員帳號可使用。</p>
+        <section
+          class="section home-party-panel home-party-panel--active"
+          id="my-parties-section"
+          aria-labelledby="my-parties-heading"
+          role="tabpanel"
+          aria-describedby="home-tab-my"
+        >
+          <div class="section-header">
+            <h2 id="my-parties-heading" class="section-title">我的飯局</h2>
+            <span class="section-hint">包含你建立與已加入的飯局</span>
           </div>
-          <button type="button" class="admin-refresh-btn" id="admin-refresh-btn">重新整理</button>
-        </div>
+          <div id="my-party-list" class="party-list" aria-live="polite"></div>
+          <p id="my-party-empty" class="empty-text" hidden>
+            目前尚未建立飯局。
+          </p>
+        </section>
 
-        <p class="admin-message" id="admin-message" aria-live="polite"></p>
+        <section
+          class="section home-party-panel"
+          id="other-parties-section"
+          aria-labelledby="other-parties-heading"
+          role="tabpanel"
+          aria-describedby="home-tab-other"
+          hidden
+        >
+          <h2 id="other-parties-heading" class="section-title">其他飯局</h2>
+          <article
+            class="party-card party-card--other"
+            id="other-party-card"
+            role="button"
+            tabindex="0"
+            aria-label="查看其他飯局詳情"
+            data-party-id="other-demo-party"
+            data-party-name="午餐找飯搭子"
+            data-host="王小明"
+            data-store="學餐二樓"
+            data-time="今天 12:20"
+            data-meal-type="午餐"
+            data-max-members="4"
+            data-description="想找同學一起吃午餐，可以輕鬆聊天，也可以討論課業。"
+            data-members='[{"id":"host-other-demo-party","name":"王小明","role":"主辦人"}]'
+          >
+            <div class="party-card-thumb" aria-hidden="true"></div>
+            <div class="party-card-body">
+              <div class="party-card-grid">
+                <span class="party-label">午餐找飯搭子</span>
+                <span class="party-label party-label--right">王小明</span>
+                <span class="party-label">學餐二樓</span>
+                <span class="party-label party-label--right">今天 12:20</span>
+                <span class="party-label party-label--meal">午餐</span>
+                <span class="party-label party-label--people">1 / 4 人</span>
+                <span
+                  class="party-card-status party-status--open"
+                  data-status="open"
+                  >招募中</span
+                >
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
 
-        <div class="admin-summary-grid" id="admin-summary-grid" aria-label="系統統計">
-          <article class="admin-summary-card">
-            <span class="admin-summary-label">使用者</span>
-            <strong id="admin-total-users">0</strong>
-          </article>
-          <article class="admin-summary-card">
-            <span class="admin-summary-label">飯局</span>
-            <strong id="admin-total-parties">0</strong>
-          </article>
-          <article class="admin-summary-card">
-            <span class="admin-summary-label">聊天室訊息</span>
-            <strong id="admin-total-messages">0</strong>
-          </article>
-          <article class="admin-summary-card">
-            <span class="admin-summary-label">評價</span>
-            <strong id="admin-total-ratings">0</strong>
-          </article>
-          <article class="admin-summary-card">
-            <span class="admin-summary-label">餐廳</span>
-            <strong id="admin-total-restaurants">0</strong>
-          </article>
-          <article class="admin-summary-card">
-            <span class="admin-summary-label">待審檢舉</span>
-            <strong id="admin-pending-reports">0</strong>
-          </article>
-        </div>
+      <!-- 通知 -->
+      <main
+        id="view-notifications"
+        class="view view--notifications"
+        aria-label="通知"
+        hidden
+      >
+        <section class="notice-panel" aria-labelledby="notice-title">
+          <div class="notice-header">
+            <h2 id="notice-title" class="notice-page-title">通知中心</h2>
+            <p class="notice-page-desc">
+              飯局建立、加入、退出、取消與聊天室新訊息會顯示在這裡。
+            </p>
+          </div>
+          <ul
+            class="notice-list"
+            id="notification-list"
+            role="list"
+            aria-live="polite"
+          ></ul>
+          <p class="empty-text notice-empty" id="notification-empty">
+            目前沒有通知。
+          </p>
+        </section>
+      </main>
 
-        <section class="admin-section" aria-labelledby="admin-restaurants-title">
-          <h3 id="admin-restaurants-title" class="admin-section-title">餐廳管理</h3>
-          <p class="admin-section-desc">管理建立飯局時可以選擇的校園周邊餐廳。</p>
-          <form id="admin-restaurant-form" class="admin-restaurant-form" novalidate>
-            <input type="hidden" id="admin-restaurant-id" />
-            <input type="text" id="admin-restaurant-name" placeholder="餐廳名稱" />
-            <input type="text" id="admin-restaurant-category" placeholder="類型，例如：便當" />
-            <select id="admin-restaurant-price">
-              <option value="$">$</option>
-              <option value="$$">$$</option>
-              <option value="$$$">$$$</option>
-            </select>
-            <input type="text" id="admin-restaurant-hours" placeholder="營業時間，例如：11:00-20:00" />
-            <input type="text" id="admin-restaurant-address" placeholder="地址" />
-            <input type="text" id="admin-restaurant-feature" placeholder="特色" />
-            <div class="admin-restaurant-actions">
-              <button type="submit" class="admin-secondary-btn" id="admin-restaurant-save-btn">新增餐廳</button>
-              <button type="button" class="admin-danger-btn" id="admin-restaurant-cancel-edit" hidden>取消編輯</button>
+      <!-- 聊天室 -->
+      <main id="view-chat" class="view view--chat" aria-label="聊天室" hidden>
+        <section class="chat-layout" aria-label="飯局聊天室">
+          <section class="chat-list-panel" aria-labelledby="chat-list-title">
+            <div class="chat-section-header">
+              <h2 id="chat-list-title" class="chat-section-title">
+                飯局聊天室
+              </h2>
+              <p class="chat-section-desc">只會顯示你建立或已加入的飯局。</p>
+            </div>
+            <ul
+              class="chat-list"
+              id="chat-room-list"
+              role="list"
+              aria-live="polite"
+            ></ul>
+            <p class="empty-text chat-empty" id="chat-empty">
+              目前沒有可使用的聊天室，請先建立或加入飯局。
+            </p>
+          </section>
+
+          <section
+            class="chat-room-panel"
+            id="chat-room-panel"
+            aria-label="聊天室內容"
+            hidden
+          >
+            <div class="chat-room-header">
+              <button type="button" class="chat-back-btn" id="chat-back-btn">
+                返回列表
+              </button>
+              <div>
+                <h2 class="chat-room-title" id="chat-room-title">聊天室</h2>
+                <p class="chat-room-meta" id="chat-room-meta">飯局資訊</p>
+              </div>
+            </div>
+
+            <ul
+              class="chat-message-list"
+              id="chat-message-list"
+              role="list"
+              aria-live="polite"
+            ></ul>
+
+            <form class="chat-form" id="chat-form" novalidate>
+              <textarea
+                class="chat-input"
+                id="chat-input"
+                rows="2"
+                placeholder="輸入訊息，例如：我大概 12:20 到"
+                aria-label="輸入聊天訊息"
+              ></textarea>
+              <button type="submit" class="chat-send-btn">送出</button>
+            </form>
+          </section>
+        </section>
+      </main>
+
+      <!-- 飯局詳情 -->
+      <main
+        id="view-party-detail"
+        class="view view--party-detail"
+        aria-label="飯局詳情"
+        hidden
+      >
+        <article class="party-detail-card">
+          <button
+            type="button"
+            class="party-report-btn"
+            id="detail-report-btn"
+            aria-label="檢舉飯局或主辦人"
+            title="檢舉"
+          >
+            ⚑
+          </button>
+          <div
+            class="party-detail-image"
+            id="detail-party-image"
+            aria-hidden="true"
+          ></div>
+          <div class="party-detail-info party-detail-info--full">
+            <h2 class="party-detail-title" id="detail-party-name">飯局名稱</h2>
+            <dl class="party-detail-list">
+              <div class="party-detail-row">
+                <dt>主辦人</dt>
+                <dd id="detail-host">約飯人 先生/小姐</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>店家</dt>
+                <dd id="detail-store">店家名稱</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>時間</dt>
+                <dd id="detail-time">時間</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>餐期</dt>
+                <dd id="detail-meal-type">午餐</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>人數</dt>
+                <dd id="detail-people">1 / 4 人</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>狀態</dt>
+                <dd>
+                  <span
+                    class="party-detail-status party-status--open"
+                    id="detail-status"
+                    data-status="open"
+                    >招募中</span
+                  >
+                </dd>
+              </div>
+            </dl>
+            <section
+              class="party-restaurant-info"
+              id="detail-restaurant-info"
+              aria-label="餐廳資訊"
+              hidden
+            >
+              <h3 class="party-description-title">餐廳資訊</h3>
+              <p><strong id="detail-restaurant-name">餐廳名稱</strong></p>
+              <p>
+                <span id="detail-restaurant-category">類型</span>｜<span
+                  id="detail-restaurant-price"
+                  >價格</span
+                >｜<span id="detail-restaurant-hours">營業時間</span>
+              </p>
+              <p id="detail-restaurant-address">地址</p>
+              <p id="detail-restaurant-feature">特色</p>
+            </section>
+            <section class="party-description" aria-label="飯局介紹">
+              <h3 class="party-description-title">飯局介紹</h3>
+              <p id="detail-description">尚未填寫飯局介紹。</p>
+            </section>
+          </div>
+          <section class="host-preview" aria-label="約飯人簡介">
+            <h3 class="host-preview-title">約飯人介紹</h3>
+            <p class="host-preview-name" id="host-preview-name">
+              約飯人 先生/小姐
+            </p>
+            <p class="host-preview-meta" id="host-preview-diet">
+              飲食偏好尚未填寫
+            </p>
+            <p class="host-preview-bio" id="host-preview-bio">
+              這裡會顯示約飯人的個人介紹，讓其他人加入飯局前可以先了解對方。
+            </p>
+          </section>
+          <div class="party-detail-actions">
+            <button type="button" class="party-detail-join" id="party-join-btn">
+              join
+            </button>
+            <button
+              type="button"
+              class="party-detail-delete-record"
+              id="party-detail-delete-btn"
+              hidden
+            >
+              刪除紀錄
+            </button>
+          </div>
+        </article>
+      </main>
+
+      <!-- 飯局詳情（已加入） -->
+      <main
+        id="view-party-joined"
+        class="view view--party-joined"
+        aria-label="飯局成員"
+        hidden
+      >
+        <article class="party-detail-card">
+          <button
+            type="button"
+            class="party-report-btn"
+            id="joined-report-btn"
+            aria-label="檢舉飯局或主辦人"
+            title="檢舉"
+          >
+            ⚑
+          </button>
+          <div
+            class="party-detail-image"
+            id="joined-party-image"
+            aria-hidden="true"
+          ></div>
+          <div class="party-detail-info party-detail-info--full">
+            <h2 class="party-detail-title" id="joined-party-name">飯局名稱</h2>
+            <dl class="party-detail-list">
+              <div class="party-detail-row">
+                <dt>主辦人</dt>
+                <dd id="joined-host">約飯人 先生/小姐</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>店家</dt>
+                <dd id="joined-store">店家名稱</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>時間</dt>
+                <dd id="joined-time">時間</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>餐期</dt>
+                <dd id="joined-meal-type">午餐</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>人數</dt>
+                <dd id="joined-people">1 / 4 人</dd>
+              </div>
+              <div class="party-detail-row">
+                <dt>狀態</dt>
+                <dd>
+                  <span
+                    class="party-detail-status party-status--open"
+                    id="joined-status"
+                    data-status="open"
+                    >招募中</span
+                  >
+                </dd>
+              </div>
+            </dl>
+            <section
+              class="party-restaurant-info"
+              id="joined-restaurant-info"
+              aria-label="餐廳資訊"
+              hidden
+            >
+              <h3 class="party-description-title">餐廳資訊</h3>
+              <p><strong id="joined-restaurant-name">餐廳名稱</strong></p>
+              <p>
+                <span id="joined-restaurant-category">類型</span>｜<span
+                  id="joined-restaurant-price"
+                  >價格</span
+                >｜<span id="joined-restaurant-hours">營業時間</span>
+              </p>
+              <p id="joined-restaurant-address">地址</p>
+              <p id="joined-restaurant-feature">特色</p>
+            </section>
+            <section class="party-description" aria-label="飯局介紹">
+              <h3 class="party-description-title">飯局介紹</h3>
+              <p id="joined-description">尚未填寫飯局介紹。</p>
+            </section>
+          </div>
+          <section class="joined-members-panel" aria-label="已加入成員">
+            <div class="joined-members-header">
+              <h3 class="joined-members-title">已加入成員</h3>
+              <span class="joined-members-count" id="joined-members-count"
+                >0 人</span
+              >
+            </div>
+            <ul
+              class="party-members"
+              id="joined-member-list"
+              aria-label="已加入成員"
+            ></ul>
+          </section>
+          <div class="party-action-row">
+            <button type="button" class="party-detail-chat" id="party-chat-btn">
+              聊天室
+            </button>
+            <button
+              type="button"
+              class="party-detail-leave"
+              id="party-leave-btn"
+              hidden
+            >
+              退出飯局
+            </button>
+            <button
+              type="button"
+              class="party-detail-cancel"
+              id="party-cancel-btn"
+              hidden
+            >
+              取消飯局
+            </button>
+            <button type="button" class="party-detail-rate" id="party-rate-btn">
+              評價
+            </button>
+          </div>
+        </article>
+      </main>
+
+      <!-- 評價 -->
+      <main
+        id="view-rating"
+        class="view view--rating"
+        aria-label="評價成員"
+        hidden
+      >
+        <article class="rating-card rating-card--complete">
+          <header class="rating-header">
+            <h2 class="rating-title" id="rating-party-title">評價飯局</h2>
+            <p class="rating-desc">
+              飯局結束後才能評價；同一場飯局每位使用者只能送出一次評價。
+            </p>
+          </header>
+          <p class="rating-message" id="rating-message" aria-live="polite"></p>
+          <ul class="rating-list" id="rating-list"></ul>
+          <button type="button" class="rating-submit" id="rating-submit-btn">
+            送出評價
+          </button>
+        </article>
+      </main>
+
+      <!-- 新增飯局 -->
+      <main
+        id="view-create"
+        class="view view--create"
+        aria-label="新增飯局"
+        hidden
+      >
+        <article class="create-card">
+          <form id="create-form" class="create-form" novalidate>
+            <div class="create-row">
+              <label class="create-label" for="create-party-name"
+                >飯局名稱</label
+              >
+              <input
+                type="text"
+                class="create-input"
+                id="create-party-name"
+                name="partyName"
+              />
+            </div>
+            <div class="create-row create-row--restaurant">
+              <label class="create-label" for="create-restaurant"
+                >餐廳選擇</label
+              >
+              <div class="create-restaurant-control">
+                <select
+                  class="create-input create-select"
+                  id="create-restaurant"
+                  name="restaurantId"
+                >
+                  <option value="">讀取餐廳清單中...</option>
+                </select>
+                <button
+                  type="button"
+                  class="create-secondary-btn create-new-restaurant-btn"
+                  id="create-new-restaurant-toggle"
+                >
+                  ＋ 新增其他餐廳
+                </button>
+              </div>
+              <input type="hidden" id="create-store" name="store" />
+            </div>
+            <div
+              class="create-restaurant-info"
+              id="create-restaurant-info"
+              hidden
+            >
+              <p><strong id="create-restaurant-name">餐廳名稱</strong></p>
+              <p>
+                <span id="create-restaurant-category">類型</span>｜<span
+                  id="create-restaurant-price"
+                  >價格</span
+                >｜<span id="create-restaurant-hours">營業時間</span>
+              </p>
+              <p id="create-restaurant-address">地址</p>
+              <p id="create-restaurant-feature">特色</p>
+            </div>
+            <div
+              class="create-custom-restaurant"
+              id="create-custom-restaurant"
+              hidden
+            >
+              <p class="create-custom-restaurant-title">新增其他餐廳</p>
+              <div class="create-custom-restaurant-grid">
+                <label class="create-custom-field" for="custom-restaurant-name">
+                  <span>餐廳名稱</span>
+                  <input
+                    type="text"
+                    class="create-input"
+                    id="custom-restaurant-name"
+                    placeholder="例如：小牛炸雞飯"
+                  />
+                </label>
+                <label
+                  class="create-custom-field"
+                  for="custom-restaurant-category"
+                >
+                  <span>類型</span>
+                  <input
+                    type="text"
+                    class="create-input"
+                    id="custom-restaurant-category"
+                    placeholder="例如：便當、咖哩、麵食"
+                  />
+                </label>
+                <label
+                  class="create-custom-field"
+                  for="custom-restaurant-price"
+                >
+                  <span>價格</span>
+                  <select
+                    class="create-input create-select"
+                    id="custom-restaurant-price"
+                  >
+                    <option value="$">$ 平價</option>
+                    <option value="$$">$$ 中等</option>
+                    <option value="$$$">$$$ 較高</option>
+                  </select>
+                </label>
+                <label
+                  class="create-custom-field"
+                  for="custom-restaurant-hours"
+                >
+                  <span>營業時間</span>
+                  <input
+                    type="text"
+                    class="create-input"
+                    id="custom-restaurant-hours"
+                    placeholder="例如：11:00-20:00"
+                  />
+                </label>
+                <label
+                  class="create-custom-field"
+                  for="custom-restaurant-address"
+                >
+                  <span>地址</span>
+                  <input
+                    type="text"
+                    class="create-input"
+                    id="custom-restaurant-address"
+                    placeholder="例如：龍潭路 123 號"
+                  />
+                </label>
+                <label
+                  class="create-custom-field create-custom-field--full"
+                  for="custom-restaurant-feature"
+                >
+                  <span>特色</span>
+                  <input
+                    type="text"
+                    class="create-input"
+                    id="custom-restaurant-feature"
+                    placeholder="例如：便宜、份量大、出餐快"
+                  />
+                </label>
+              </div>
+              <p class="create-file-hint">
+                送出飯局時，會先把這間餐廳新增進資料庫，再建立飯局。
+              </p>
+            </div>
+            <div class="create-row">
+              <label class="create-label" for="create-time">時間</label>
+              <select
+                class="create-input create-select"
+                id="create-time"
+                name="time"
+              >
+                <option value="今天 08:00">今天 08:00</option>
+                <option value="今天 09:00">今天 09:00</option>
+                <option value="今天 10:00">今天 10:00</option>
+                <option value="今天 11:00">今天 11:00</option>
+                <option value="今天 12:00">今天 12:00</option>
+                <option value="今天 12:30">今天 12:30</option>
+                <option value="今天 13:00">今天 13:00</option>
+                <option value="今天 17:30">今天 17:30</option>
+                <option value="今天 18:00">今天 18:00</option>
+                <option value="今天 18:30" selected>今天 18:30</option>
+                <option value="今天 19:00">今天 19:00</option>
+                <option value="今天 20:00">今天 20:00</option>
+                <option value="今天 21:00">今天 21:00</option>
+                <option value="今天 22:00">今天 22:00</option>
+              </select>
+            </div>
+            <div class="create-row">
+              <label class="create-label" for="create-meal-type">餐期</label>
+              <select
+                class="create-input create-select"
+                id="create-meal-type"
+                name="mealType"
+              >
+                <option value="早餐">早餐</option>
+                <option value="午餐" selected>午餐</option>
+                <option value="晚餐">晚餐</option>
+                <option value="宵夜">宵夜</option>
+              </select>
+            </div>
+            <div class="create-row">
+              <label class="create-label" for="create-max-members"
+                >人數上限</label
+              >
+              <input
+                type="number"
+                class="create-input"
+                id="create-max-members"
+                name="maxMembers"
+                min="2"
+                max="10"
+                placeholder="例如：4"
+              />
+            </div>
+            <div class="create-row create-row--file">
+              <label class="create-label" for="create-cover-file"
+                >飯局封面</label
+              >
+              <div class="create-file-box">
+                <input
+                  type="file"
+                  class="create-file-input"
+                  id="create-cover-file"
+                  name="cover"
+                  accept="image/*"
+                />
+                <p class="create-file-hint">
+                  可選，支援 jpg / png / webp，展示用會存到後端 uploads 資料夾。
+                </p>
+              </div>
+            </div>
+            <div class="create-row create-row--textarea">
+              <label class="create-label" for="create-description"
+                >飯局介紹</label
+              >
+              <textarea
+                class="create-input create-textarea"
+                id="create-description"
+                name="description"
+                rows="4"
+                placeholder="例如：想找同學一起吃晚餐，可以聊天或討論作業。"
+              ></textarea>
+            </div>
+            <button type="submit" class="create-submit">Create</button>
+          </form>
+        </article>
+      </main>
+
+      <!-- 個人帳號 -->
+      <main
+        id="view-profile"
+        class="view view--profile"
+        aria-label="個人帳號"
+        hidden
+      >
+        <article class="profile-card profile-card--editable">
+          <section class="profile-summary" aria-label="個人資料摘要">
+            <label
+              class="profile-avatar profile-avatar--editable"
+              for="profile-avatar-file"
+              aria-label="上傳頭像"
+            >
+              <img
+                id="profile-avatar-preview"
+                class="profile-avatar-preview"
+                alt="個人頭像預覽"
+                hidden
+              />
+              <svg
+                class="profile-avatar-icon"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                />
+              </svg>
+              <span class="profile-avatar-edit">更換頭像</span>
+            </label>
+            <input
+              type="file"
+              id="profile-avatar-file"
+              accept="image/*"
+              hidden
+            />
+
+            <div class="profile-summary-text">
+              <label
+                class="profile-label profile-label--name"
+                for="profile-name-input"
+                >姓名</label
+              >
+              <input
+                type="text"
+                class="profile-name-input"
+                id="profile-name-input"
+                value="約飯人 先生/小姐"
+                readonly
+              />
+              <p class="profile-hint">
+                完善資料後，其他人加入飯局前可以更了解你。
+              </p>
+            </div>
+
+            <div class="profile-actions">
+              <button
+                type="button"
+                class="profile-edit"
+                id="profile-edit-btn"
+                aria-label="編輯個人資料"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M15 7l2 2-8 8H7v-2l8-8z" />
+                </svg>
+                <span>編輯</span>
+              </button>
+              <button
+                type="button"
+                class="profile-save"
+                id="profile-save-btn"
+                hidden
+              >
+                儲存
+              </button>
+            </div>
+          </section>
+
+          <form id="profile-form" class="profile-form" novalidate>
+            <section
+              class="profile-panel"
+              aria-labelledby="profile-basic-title"
+            >
+              <h2 id="profile-basic-title" class="profile-panel-title">
+                基本資料
+              </h2>
+              <div class="profile-fields profile-fields--grid">
+                <div class="profile-row">
+                  <label class="profile-label" for="profile-student-id"
+                    >學號</label
+                  >
+                  <input
+                    type="text"
+                    class="profile-input"
+                    id="profile-student-id"
+                    readonly
+                  />
+                </div>
+                <div class="profile-row profile-row--department">
+                  <label class="profile-label" for="profile-department"
+                    >系所</label
+                  >
+                  <input
+                    type="text"
+                    class="profile-input"
+                    id="profile-department"
+                    placeholder="例如：資訊管理系"
+                    readonly
+                  />
+                </div>
+                <div class="profile-row profile-row--rating">
+                  <span class="profile-label">平均評分</span>
+                  <span
+                    class="profile-rating-summary"
+                    id="profile-average-rating"
+                    >尚無評價</span
+                  >
+                </div>
+              </div>
+            </section>
+
+            <section
+              class="profile-panel"
+              aria-labelledby="profile-preference-title"
+            >
+              <h2 id="profile-preference-title" class="profile-panel-title">
+                飲食偏好
+              </h2>
+              <div class="preference-group">
+                <p class="preference-title">飲食習慣</p>
+                <label class="preference-chip"
+                  ><input
+                    type="checkbox"
+                    name="diet"
+                    value="素食"
+                    disabled
+                  />素食</label
+                >
+                <label class="preference-chip"
+                  ><input
+                    type="checkbox"
+                    name="diet"
+                    value="不吃辣"
+                    disabled
+                  />不吃辣</label
+                >
+                <label class="preference-chip"
+                  ><input
+                    type="checkbox"
+                    name="diet"
+                    value="可吃辣"
+                    disabled
+                  />可吃辣</label
+                >
+                <label class="preference-chip"
+                  ><input
+                    type="checkbox"
+                    name="diet"
+                    value="不吃牛"
+                    disabled
+                  />不吃牛</label
+                >
+              </div>
+              <div class="preference-group">
+                <p class="preference-title">喜歡類型</p>
+                <label class="preference-chip"
+                  ><input
+                    type="checkbox"
+                    name="cuisine"
+                    value="中式"
+                    disabled
+                  />中式</label
+                >
+                <label class="preference-chip"
+                  ><input
+                    type="checkbox"
+                    name="cuisine"
+                    value="日式"
+                    disabled
+                  />日式</label
+                >
+                <label class="preference-chip"
+                  ><input
+                    type="checkbox"
+                    name="cuisine"
+                    value="速食"
+                    disabled
+                  />速食</label
+                >
+                <label class="preference-chip"
+                  ><input
+                    type="checkbox"
+                    name="cuisine"
+                    value="咖啡廳"
+                    disabled
+                  />咖啡廳</label
+                >
+              </div>
+            </section>
+
+            <section
+              class="profile-panel profile-panel--bio"
+              aria-labelledby="profile-bio-title"
+            >
+              <h2 id="profile-bio-title" class="profile-panel-title">
+                個人介紹
+              </h2>
+              <textarea
+                id="profile-bio"
+                class="profile-bio"
+                rows="5"
+                placeholder="例如：我喜歡安靜聊天、可以一起嘗試新餐廳，平常比較常吃日式和簡餐。"
+                readonly
+              ></textarea>
+            </section>
+
+            <section
+              class="profile-panel profile-panel--reviews"
+              aria-labelledby="profile-review-title"
+            >
+              <h2 id="profile-review-title" class="profile-panel-title">
+                評價紀錄
+              </h2>
+              <p class="profile-review-empty" id="profile-review-empty">
+                目前尚未收到評價。
+              </p>
+              <ul class="profile-review-list" id="profile-review-list"></ul>
+            </section>
+          </form>
+
+          <button type="button" class="profile-signout" id="profile-signout">
+            sign out
+          </button>
+        </article>
+      </main>
+
+      <!-- 後台管理 -->
+      <main
+        id="view-admin"
+        class="view view--admin"
+        aria-label="後台管理"
+        hidden
+      >
+        <section class="admin-panel" aria-labelledby="admin-title">
+          <div class="admin-header">
+            <div>
+              <h2 id="admin-title" class="admin-title">後台管理</h2>
+              <p class="admin-desc">
+                管理使用者、飯局與聊天室訊息。此頁僅管理員帳號可使用。
+              </p>
+            </div>
+            <button
+              type="button"
+              class="admin-refresh-btn"
+              id="admin-refresh-btn"
+            >
+              重新整理
+            </button>
+          </div>
+
+          <p class="admin-message" id="admin-message" aria-live="polite"></p>
+
+          <div
+            class="admin-summary-grid"
+            id="admin-summary-grid"
+            aria-label="系統統計"
+          >
+            <article class="admin-summary-card">
+              <span class="admin-summary-label">使用者</span>
+              <strong id="admin-total-users">0</strong>
+            </article>
+            <article class="admin-summary-card">
+              <span class="admin-summary-label">飯局</span>
+              <strong id="admin-total-parties">0</strong>
+            </article>
+            <article class="admin-summary-card">
+              <span class="admin-summary-label">聊天室訊息</span>
+              <strong id="admin-total-messages">0</strong>
+            </article>
+            <article class="admin-summary-card">
+              <span class="admin-summary-label">評價</span>
+              <strong id="admin-total-ratings">0</strong>
+            </article>
+            <article class="admin-summary-card">
+              <span class="admin-summary-label">餐廳</span>
+              <strong id="admin-total-restaurants">0</strong>
+            </article>
+            <article class="admin-summary-card">
+              <span class="admin-summary-label">待審檢舉</span>
+              <strong id="admin-pending-reports">0</strong>
+            </article>
+          </div>
+
+          <section
+            class="admin-section"
+            aria-labelledby="admin-restaurants-title"
+          >
+            <h3 id="admin-restaurants-title" class="admin-section-title">
+              餐廳管理
+            </h3>
+            <p class="admin-section-desc">
+              管理建立飯局時可以選擇的校園周邊餐廳。
+            </p>
+            <form
+              id="admin-restaurant-form"
+              class="admin-restaurant-form"
+              novalidate
+            >
+              <input type="hidden" id="admin-restaurant-id" />
+              <input
+                type="text"
+                id="admin-restaurant-name"
+                placeholder="餐廳名稱"
+              />
+              <input
+                type="text"
+                id="admin-restaurant-category"
+                placeholder="類型，例如：便當"
+              />
+              <select id="admin-restaurant-price">
+                <option value="$">$</option>
+                <option value="$$">$$</option>
+                <option value="$$$">$$$</option>
+              </select>
+              <input
+                type="text"
+                id="admin-restaurant-hours"
+                placeholder="營業時間，例如：11:00-20:00"
+              />
+              <input
+                type="text"
+                id="admin-restaurant-address"
+                placeholder="地址"
+              />
+              <input
+                type="text"
+                id="admin-restaurant-feature"
+                placeholder="特色"
+              />
+              <div class="admin-restaurant-actions">
+                <button
+                  type="submit"
+                  class="admin-secondary-btn"
+                  id="admin-restaurant-save-btn"
+                >
+                  新增餐廳
+                </button>
+                <button
+                  type="button"
+                  class="admin-danger-btn"
+                  id="admin-restaurant-cancel-edit"
+                  hidden
+                >
+                  取消編輯
+                </button>
+              </div>
+            </form>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>餐廳</th>
+                    <th>類型/價格</th>
+                    <th>營業時間</th>
+                    <th>特色</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-restaurant-list"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-section" aria-labelledby="admin-users-title">
+            <h3 id="admin-users-title" class="admin-section-title">
+              使用者管理
+            </h3>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>帳號 / 姓名</th>
+                    <th>角色</th>
+                    <th>建立飯局</th>
+                    <th>評分</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-user-list"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-section" aria-labelledby="admin-parties-title">
+            <h3 id="admin-parties-title" class="admin-section-title">
+              飯局管理
+            </h3>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>飯局</th>
+                    <th>主辦人</th>
+                    <th>時間 / 人數</th>
+                    <th>狀態</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-party-list"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-section" aria-labelledby="admin-chats-title">
+            <h3 id="admin-chats-title" class="admin-section-title">
+              聊天室訊息管理
+            </h3>
+            <p class="admin-section-desc">
+              顯示最近 100 則訊息，管理員可刪除不當訊息。
+            </p>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>飯局</th>
+                    <th>發送者</th>
+                    <th>訊息</th>
+                    <th>時間</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-chat-list"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-section" aria-labelledby="admin-reports-title">
+            <h3 id="admin-reports-title" class="admin-section-title">
+              檢舉審核
+            </h3>
+            <p class="admin-section-desc">
+              查看使用者送出的飯局、主辦人與聊天室訊息檢舉，並標記處理狀態。
+            </p>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>類型 / 對象</th>
+                    <th>檢舉人</th>
+                    <th>原因</th>
+                    <th>狀態</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-report-list"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <!-- 檢舉彈窗 -->
+      <div class="report-modal" id="report-modal" hidden>
+        <div class="report-modal-backdrop" data-report-close></div>
+        <section
+          class="report-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-dialog-title"
+        >
+          <div class="report-dialog-header">
+            <h2 id="report-dialog-title">檢舉</h2>
+            <button
+              type="button"
+              class="report-close-btn"
+              id="report-close-btn"
+              aria-label="關閉檢舉視窗"
+            >
+              ×
+            </button>
+          </div>
+          <p class="report-target-text" id="report-target-text">
+            請選擇檢舉內容。
+          </p>
+          <form id="report-form" class="report-form" novalidate>
+            <div class="report-row" id="report-target-row">
+              <label for="report-target-type">檢舉對象</label>
+              <select id="report-target-type">
+                <option value="party">檢舉飯局</option>
+                <option value="user">檢舉主辦人</option>
+              </select>
+            </div>
+            <div class="report-row">
+              <label for="report-reason">檢舉原因</label>
+              <select id="report-reason" required>
+                <option value="">請選擇原因</option>
+                <option value="不當內容">不當內容</option>
+                <option value="騷擾或攻擊">騷擾或攻擊</option>
+                <option value="虛假資訊">虛假資訊</option>
+                <option value="垃圾訊息">垃圾訊息</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div class="report-row report-row--textarea">
+              <label for="report-description">補充說明</label>
+              <textarea
+                id="report-description"
+                rows="4"
+                placeholder="可以簡單說明檢舉原因，方便管理員審核。"
+              ></textarea>
+            </div>
+            <p
+              class="report-message"
+              id="report-message"
+              aria-live="polite"
+            ></p>
+            <div class="report-actions">
+              <button
+                type="button"
+                class="report-cancel-btn"
+                id="report-cancel-btn"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="report-submit-btn"
+                id="report-submit-btn"
+              >
+                送出檢舉
+              </button>
             </div>
           </form>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>餐廳</th>
-                  <th>類型/價格</th>
-                  <th>營業時間</th>
-                  <th>特色</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="admin-restaurant-list"></tbody>
-            </table>
-          </div>
         </section>
+      </div>
 
-        <section class="admin-section" aria-labelledby="admin-users-title">
-          <h3 id="admin-users-title" class="admin-section-title">使用者管理</h3>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>帳號 / 姓名</th>
-                  <th>角色</th>
-                  <th>建立飯局</th>
-                  <th>評分</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="admin-user-list"></tbody>
-            </table>
-          </div>
-        </section>
+      <button type="button" class="fab" id="fab" aria-label="新增飯局">
+        <span aria-hidden="true">+</span>
+      </button>
 
-        <section class="admin-section" aria-labelledby="admin-parties-title">
-          <h3 id="admin-parties-title" class="admin-section-title">飯局管理</h3>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>飯局</th>
-                  <th>主辦人</th>
-                  <th>時間 / 人數</th>
-                  <th>狀態</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="admin-party-list"></tbody>
-            </table>
-          </div>
-        </section>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a href="#" class="nav-item" data-nav="notifications">
+          <span class="nav-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"
+              />
+              <path d="M10 17a2 2 0 0 0 4 0" />
+            </svg>
+          </span>
+          <span class="nav-label">通知</span>
+        </a>
+        <a href="#" class="nav-item" data-nav="chat">
+          <span class="nav-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+              />
+            </svg>
+          </span>
+          <span class="nav-label">聊天室</span>
+        </a>
 
-        <section class="admin-section" aria-labelledby="admin-chats-title">
-          <h3 id="admin-chats-title" class="admin-section-title">聊天室訊息管理</h3>
-          <p class="admin-section-desc">顯示最近 100 則訊息，管理員可刪除不當訊息。</p>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>飯局</th>
-                  <th>發送者</th>
-                  <th>訊息</th>
-                  <th>時間</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="admin-chat-list"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="admin-section" aria-labelledby="admin-reports-title">
-          <h3 id="admin-reports-title" class="admin-section-title">檢舉審核</h3>
-          <p class="admin-section-desc">查看使用者送出的飯局、主辦人與聊天室訊息檢舉，並標記處理狀態。</p>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>類型 / 對象</th>
-                  <th>檢舉人</th>
-                  <th>原因</th>
-                  <th>狀態</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="admin-report-list"></tbody>
-            </table>
-          </div>
-        </section>
-      </section>
-    </main>
-
-
-    <!-- 檢舉彈窗 -->
-    <div class="report-modal" id="report-modal" hidden>
-      <div class="report-modal-backdrop" data-report-close></div>
-      <section class="report-dialog" role="dialog" aria-modal="true" aria-labelledby="report-dialog-title">
-        <div class="report-dialog-header">
-          <h2 id="report-dialog-title">檢舉</h2>
-          <button type="button" class="report-close-btn" id="report-close-btn" aria-label="關閉檢舉視窗">×</button>
-        </div>
-        <p class="report-target-text" id="report-target-text">請選擇檢舉內容。</p>
-        <form id="report-form" class="report-form" novalidate>
-          <div class="report-row" id="report-target-row">
-            <label for="report-target-type">檢舉對象</label>
-            <select id="report-target-type">
-              <option value="party">檢舉飯局</option>
-              <option value="user">檢舉主辦人</option>
-            </select>
-          </div>
-          <div class="report-row">
-            <label for="report-reason">檢舉原因</label>
-            <select id="report-reason" required>
-              <option value="">請選擇原因</option>
-              <option value="不當內容">不當內容</option>
-              <option value="騷擾或攻擊">騷擾或攻擊</option>
-              <option value="虛假資訊">虛假資訊</option>
-              <option value="垃圾訊息">垃圾訊息</option>
-              <option value="其他">其他</option>
-            </select>
-          </div>
-          <div class="report-row report-row--textarea">
-            <label for="report-description">補充說明</label>
-            <textarea id="report-description" rows="4" placeholder="可以簡單說明檢舉原因，方便管理員審核。"></textarea>
-          </div>
-          <p class="report-message" id="report-message" aria-live="polite"></p>
-          <div class="report-actions">
-            <button type="button" class="report-cancel-btn" id="report-cancel-btn">取消</button>
-            <button type="submit" class="report-submit-btn" id="report-submit-btn">送出檢舉</button>
-          </div>
-        </form>
-      </section>
+        <a href="#" class="nav-item nav-item--admin" data-nav="admin" hidden>
+          <span class="nav-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+          </span>
+          <span class="nav-label">後台</span>
+        </a>
+        <a
+          href="#"
+          class="nav-item nav-item--active"
+          data-nav="home"
+          aria-current="page"
+        >
+          <span class="nav-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M3 10.5L12 3l9 7.5" />
+              <path d="M5 9.5V21h14V9.5" />
+            </svg>
+          </span>
+          <span class="nav-label">home</span>
+        </a>
+        <a href="#" class="nav-item" data-nav="profile">
+          <span class="nav-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c1.8-3.5 5-5 8-5s6.2 1.5 8 5" />
+            </svg>
+          </span>
+          <span class="nav-label">個人帳號</span>
+        </a>
+      </nav>
     </div>
 
-    <button type="button" class="fab" id="fab" aria-label="新增飯局">
-      <span aria-hidden="true">+</span>
-    </button>
-
-    <nav class="bottom-nav" aria-label="主要導覽">
-      <a href="#" class="nav-item" data-nav="notifications">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" />
-            <path d="M10 17a2 2 0 0 0 4 0" />
-          </svg>
-        </span>
-        <span class="nav-label">通知</span>
-      </a>
-      <a href="#" class="nav-item" data-nav="chat">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </span>
-        <span class="nav-label">聊天室</span>
-      </a>
-
-      <a href="#" class="nav-item nav-item--admin" data-nav="admin" hidden>
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
-            <path d="M9 12l2 2 4-4" />
-          </svg>
-        </span>
-        <span class="nav-label">後台</span>
-      </a>
-      <a href="#" class="nav-item nav-item--active" data-nav="home" aria-current="page">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 10.5L12 3l9 7.5" />
-            <path d="M5 9.5V21h14V9.5" />
-          </svg>
-        </span>
-        <span class="nav-label">home</span>
-      </a>
-      <a href="#" class="nav-item" data-nav="profile">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 20c1.8-3.5 5-5 8-5s6.2 1.5 8 5" />
-          </svg>
-        </span>
-        <span class="nav-label">個人帳號</span>
-      </a>
-    </nav>
-  </div>
-
-  <script src="js/config.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
-</body>
-
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+  </body>
 </html>

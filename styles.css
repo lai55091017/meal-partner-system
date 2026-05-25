@@ -31,7 +31,8 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
     "Microsoft JhengHei", sans-serif;
   background: #e8e4dc;
   color: var(--text-on-light);
@@ -91,7 +92,8 @@ body {
 /* Views */
 .view {
   flex: 1;
-  padding: 0 16px calc(var(--nav-height) + var(--fab-size) + 24px + var(--safe-bottom));
+  padding: 0 16px
+    calc(var(--nav-height) + var(--fab-size) + 24px + var(--safe-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -305,7 +307,9 @@ body {
 .party-card--other {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 
 .party-card--mine:hover,
@@ -540,7 +544,9 @@ body {
   color: transparent;
   -webkit-text-stroke: 1.5px var(--white);
   font-family: inherit;
-  transition: color 0.15s, -webkit-text-stroke 0.15s;
+  transition:
+    color 0.15s,
+    -webkit-text-stroke 0.15s;
 }
 
 .star--active {
@@ -597,7 +603,9 @@ body {
   justify-content: center;
   box-shadow: 0 4px 14px rgba(90, 143, 168, 0.45);
   z-index: 30;
-  transition: background 0.2s, transform 0.15s;
+  transition:
+    background 0.2s,
+    transform 0.15s;
   font-family: inherit;
 }
 
@@ -789,7 +797,9 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: box-shadow 0.15s, transform 0.15s;
+  transition:
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 
 .chat-card:hover {
@@ -1216,7 +1226,9 @@ body {
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.2s, transform 0.15s;
+  transition:
+    opacity 0.2s,
+    transform 0.15s;
 }
 
 .login-submit:hover {
@@ -1875,7 +1887,6 @@ main[hidden] {
 
 /* 手機版個人帳號頁：保持接近原型圖的樣式 */
 @media (max-width: 767px) {
-
   .app[data-view="profile"] .header-banner--home,
   .app[data-view="login"] .header-banner--home {
     display: none !important;
@@ -2257,7 +2268,7 @@ main[hidden] {
   transition: opacity 0.18s;
 }
 
-.profile-form--editing~.profile-signout,
+.profile-form--editing ~ .profile-signout,
 .profile-card--editable:has(.profile-form--editing) .profile-avatar-edit,
 .profile-avatar--editable:hover .profile-avatar-edit {
   opacity: 1;
@@ -2473,7 +2484,6 @@ main[hidden] {
 }
 
 @media (min-width: 768px) {
-
   /* 電腦版個人帳號頁：從小卡片改成寬版資料面板 */
   #view-profile.view--active {
     display: block;
@@ -2861,7 +2871,9 @@ main[hidden] {
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.2s, transform 0.15s;
+  transition:
+    opacity 0.2s,
+    transform 0.15s;
 }
 
 .party-detail-chat:hover {
@@ -2884,7 +2896,10 @@ main[hidden] {
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.2s, transform 0.15s, background 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.15s,
+    background 0.2s;
 }
 
 .party-detail-leave:hover {
@@ -2957,7 +2972,9 @@ main[hidden] {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 
 .chat-room-button:hover {
@@ -3170,7 +3187,7 @@ main[hidden] {
     text-align: center;
   }
 
-  .chat-room-panel[hidden]>* {
+  .chat-room-panel[hidden] > * {
     display: none !important;
   }
 
@@ -3193,7 +3210,8 @@ main[hidden] {
 @media (max-width: 767px) {
   .chat-room-panel:not([hidden]) {
     position: fixed;
-    inset: calc(12px + var(--safe-top)) 16px calc(var(--nav-height) + 12px + var(--safe-bottom));
+    inset: calc(12px + var(--safe-top)) 16px
+      calc(var(--nav-height) + 12px + var(--safe-bottom));
     z-index: 35;
     display: flex;
     flex-direction: column;
@@ -3208,7 +3226,6 @@ main[hidden] {
     flex-shrink: 0;
   }
 }
-
 
 /* LEAVE PARTY PATCH */
 @media (max-width: 420px) {
@@ -3272,7 +3289,6 @@ main[hidden] {
 }
 
 @media (min-width: 768px) {
-
   #view-home.view--active .filter-extra,
   #view-home.view--active .home-no-result {
     grid-column: 1 / -1;
@@ -3286,7 +3302,6 @@ main[hidden] {
     margin-bottom: 0;
   }
 }
-
 
 /* 搜尋修正：取消首頁上方大型無結果提示，只保留各區塊自己的空狀態。 */
 .home-no-result {
@@ -3386,7 +3401,9 @@ main[hidden] {
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.2s, transform 0.15s;
+  transition:
+    opacity 0.2s,
+    transform 0.15s;
 }
 
 .party-detail-cancel:hover {
@@ -3423,7 +3440,7 @@ main[hidden] {
   margin-top: 4px;
 }
 
-.party-action-row>button,
+.party-action-row > button,
 .party-action-row .party-detail-chat,
 .party-action-row .party-detail-leave,
 .party-action-row .party-detail-cancel,
@@ -3437,7 +3454,7 @@ main[hidden] {
   text-align: center;
 }
 
-.party-action-row>button[hidden] {
+.party-action-row > button[hidden] {
   display: none !important;
 }
 
@@ -3472,7 +3489,7 @@ main[hidden] {
   grid-column: 1 / -1;
 }
 
-.party-action-row>button,
+.party-action-row > button,
 .party-action-row .party-detail-chat,
 .party-action-row .party-detail-leave,
 .party-action-row .party-detail-cancel,
@@ -3486,7 +3503,7 @@ main[hidden] {
   text-align: center;
 }
 
-.party-action-row>button[hidden] {
+.party-action-row > button[hidden] {
   display: none !important;
 }
 
@@ -3496,7 +3513,7 @@ main[hidden] {
     align-items: stretch;
   }
 
-  .party-action-row>button,
+  .party-action-row > button,
   .party-action-row .party-detail-chat,
   .party-action-row .party-detail-leave,
   .party-action-row .party-detail-cancel,
@@ -3528,7 +3545,10 @@ main[hidden] {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s,
+    background 0.15s;
 }
 
 .notice-delete-btn {
@@ -3626,7 +3646,10 @@ main[hidden] {
   z-index: 5;
   cursor: pointer;
   border-radius: 8px;
-  transition: color 0.16s ease, background 0.16s ease, transform 0.12s ease;
+  transition:
+    color 0.16s ease,
+    background 0.16s ease,
+    transform 0.12s ease;
 }
 
 .notice-delete-btn:hover,
@@ -3658,7 +3681,6 @@ main[hidden] {
 }
 
 @media (max-width: 767px) {
-
   .notice-delete-btn,
   .chat-room-delete {
     width: 30px;
@@ -3675,7 +3697,6 @@ main[hidden] {
     padding-right: 48px;
   }
 }
-
 
 /* Keep canceled party delete as text button, not X icon */
 .party-card .party-card-delete {
@@ -3713,7 +3734,6 @@ main[hidden] {
   padding-right: 0;
 }
 
-
 /* Canceled party delete record layout patch */
 .party-card .party-card-delete {
   position: absolute;
@@ -3735,7 +3755,10 @@ main[hidden] {
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   z-index: 4;
-  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .party-card .party-card-delete:hover,
@@ -3783,7 +3806,10 @@ main[hidden] {
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.16s ease, color 0.16s ease, transform 0.12s ease;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    transform 0.12s ease;
 }
 
 .party-detail-delete-record:hover,
@@ -3822,7 +3848,6 @@ main[hidden] {
     flex: none;
   }
 }
-
 
 /* ======================================================
    PARTY CARD RATIO CONSISTENCY PATCH
@@ -3966,7 +3991,9 @@ main[hidden] {
   font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
-  transition: opacity 0.18s, transform 0.14s;
+  transition:
+    opacity 0.18s,
+    transform 0.14s;
 }
 
 .rating-submit:hover:not(:disabled) {
@@ -4060,7 +4087,6 @@ main[hidden] {
   }
 }
 
-
 /* ======================================================
    REGISTER RWD PATCH
    登入頁加入註冊分頁：手機單欄、桌面雙欄，並與原本登入卡片風格一致。
@@ -4085,7 +4111,10 @@ main[hidden] {
   font-weight: 800;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.18s, color 0.18s, transform 0.15s;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    transform 0.15s;
 }
 
 .auth-tab:hover {
@@ -4162,7 +4191,6 @@ main[hidden] {
   }
 }
 
-
 /* ======================================================
    NAV BEAUTY PATCH
    左側 / 底部導覽列美化：加入 SVG icon、柔和 active 狀態與一致間距。
@@ -4179,7 +4207,10 @@ main[hidden] {
   isolation: isolate;
   border-radius: 20px;
   color: var(--white);
-  transition: background 0.18s ease, transform 0.14s ease, box-shadow 0.18s ease;
+  transition:
+    background 0.18s ease,
+    transform 0.14s ease,
+    box-shadow 0.18s ease;
 }
 
 .nav-item::before {
@@ -4189,7 +4220,9 @@ main[hidden] {
   z-index: -1;
   border-radius: 18px;
   background: transparent;
-  transition: background 0.18s ease, opacity 0.18s ease;
+  transition:
+    background 0.18s ease,
+    opacity 0.18s ease;
 }
 
 .nav-item:hover::before,
@@ -4217,7 +4250,11 @@ main[hidden] {
   justify-content: center;
   margin: 0 auto;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
-  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .nav-icon svg {
@@ -4235,7 +4272,9 @@ main[hidden] {
   letter-spacing: 0.015em;
   line-height: 1.2;
   text-align: center;
-  transition: color 0.18s ease, transform 0.18s ease;
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .nav-item:hover .nav-icon,
@@ -4322,7 +4361,6 @@ main[hidden] {
     font-size: 0.74rem;
   }
 }
-
 
 /* ======================================================
    AUTH EMPTY STATE FIX
@@ -4529,10 +4567,9 @@ main[hidden] {
   line-height: 1.6;
 }
 
-.create-restaurant-info p+p {
+.create-restaurant-info p + p {
   margin-top: 4px;
 }
-
 
 .create-row--restaurant {
   align-items: flex-start;
@@ -4592,7 +4629,7 @@ main[hidden] {
   line-height: 1.65;
 }
 
-.party-restaurant-info p+p {
+.party-restaurant-info p + p {
   margin-top: 4px;
 }
 
@@ -4644,7 +4681,6 @@ main[hidden] {
     grid-template-columns: 1fr;
   }
 }
-
 
 /* ======================================================
    CREATE FORM LAYOUT FIX PATCH
@@ -5420,7 +5456,6 @@ main[hidden] {
 }
 
 @media (min-width: 768px) {
-
   #view-home.view--active .home-party-tabs,
   #view-home.view--active .home-party-panel {
     grid-column: 1 / -1;
@@ -5802,7 +5837,6 @@ main[hidden] {
     display: none;
   }
 }
-
 
 /* ======================================================
    PARTY CARD LAYOUT CLEANUP 2
@@ -6373,7 +6407,11 @@ main[hidden] {
   margin: 0 0 18px;
   padding: 10px;
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(74, 74, 74, 0.98), rgba(61, 61, 61, 0.98));
+  background: linear-gradient(
+    180deg,
+    rgba(74, 74, 74, 0.98),
+    rgba(61, 61, 61, 0.98)
+  );
   border: 1px solid rgba(255, 255, 255, 0.09);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.1);
 }
@@ -6455,7 +6493,9 @@ main[hidden] {
 
 .home-query-advanced .home-filter-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.1fr) minmax(140px, 0.9fr) auto;
+  grid-template-columns:
+    minmax(150px, 1fr) minmax(170px, 1.1fr) minmax(140px, 0.9fr)
+    auto;
   align-items: center;
   gap: 12px;
 }
@@ -6489,12 +6529,14 @@ main[hidden] {
   cursor: pointer;
   appearance: none;
   background-image:
-    linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, .76) 50%),
-    linear-gradient(135deg, rgba(255, 255, 255, .76) 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.76) 50%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.76) 50%, transparent 50%);
   background-position:
     calc(100% - 17px) calc(50% - 2px),
     calc(100% - 12px) calc(50% - 2px);
-  background-size: 5px 5px, 5px 5px;
+  background-size:
+    5px 5px,
+    5px 5px;
   background-repeat: no-repeat;
 }
 
@@ -6575,7 +6617,6 @@ main[hidden] {
   }
 }
 
-
 /* ======================================================
    CREAM MINIMAL BRAND PATCH - 飯搭子系統
    奶油簡約風：保留原本深灰與藍灰基調，增加校園社群感、溫暖白卡與柔和陰影。
@@ -6593,18 +6634,26 @@ main[hidden] {
   --dark-deep: #373737;
   --accent-blue: #5a8fa8;
   --accent-blue-hover: #4a7d96;
-  --shadow-card: 0 12px 30px rgba(88, 70, 48, 0.10);
+  --shadow-card: 0 12px 30px rgba(88, 70, 48, 0.1);
 }
 
 body {
   background:
-    radial-gradient(circle at top left, rgba(255, 244, 224, 0.9), transparent 34%),
+    radial-gradient(
+      circle at top left,
+      rgba(255, 244, 224, 0.9),
+      transparent 34%
+    ),
     linear-gradient(135deg, #f6f0e7 0%, #ebe4da 100%);
 }
 
 .app {
   background:
-    radial-gradient(circle at top right, rgba(255, 240, 211, 0.78), transparent 28%),
+    radial-gradient(
+      circle at top right,
+      rgba(255, 240, 211, 0.78),
+      transparent 28%
+    ),
     var(--bg-cream);
 }
 
@@ -6688,8 +6737,11 @@ body {
   margin: 0 0 16px;
   padding: 18px;
   border-radius: 26px;
-  background:
-    linear-gradient(135deg, rgba(255, 250, 243, 0.98) 0%, rgba(248, 241, 231, 0.98) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 250, 243, 0.98) 0%,
+    rgba(248, 241, 231, 0.98) 100%
+  );
   border: 1px solid rgba(227, 216, 202, 0.92);
   box-shadow: var(--shadow-card);
   display: flex;
@@ -6771,7 +6823,7 @@ body {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  box-shadow: 0 14px 28px rgba(65, 54, 42, 0.20);
+  box-shadow: 0 14px 28px rgba(65, 54, 42, 0.2);
 }
 
 .header-banner-bowl {
@@ -6881,7 +6933,9 @@ body {
 
 .home-query-advanced .home-filter-row {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) minmax(150px, 1.05fr) minmax(120px, 0.85fr) auto;
+  grid-template-columns:
+    minmax(130px, 1fr) minmax(150px, 1.05fr) minmax(120px, 0.85fr)
+    auto;
   align-items: end;
   gap: 10px;
 }
@@ -6920,7 +6974,9 @@ body {
   background-position:
     calc(100% - 17px) calc(50% - 2px),
     calc(100% - 12px) calc(50% - 2px);
-  background-size: 5px 5px, 5px 5px;
+  background-size:
+    5px 5px,
+    5px 5px;
   background-repeat: no-repeat;
 }
 
@@ -7048,7 +7104,11 @@ body {
 @media (min-width: 768px) {
   body {
     background:
-      radial-gradient(circle at 14% 8%, rgba(255, 241, 214, 0.82), transparent 30%),
+      radial-gradient(
+        circle at 14% 8%,
+        rgba(255, 241, 214, 0.82),
+        transparent 30%
+      ),
       linear-gradient(135deg, #f6f0e7 0%, #e9e1d6 100%);
   }
 
@@ -7123,7 +7183,7 @@ body {
   }
 
   #view-home.view--active .party-list,
-  #view-home.view--active .home-party-panel>.party-card {
+  #view-home.view--active .home-party-panel > .party-card {
     width: 100%;
     max-width: 900px;
   }
@@ -7175,7 +7235,6 @@ body {
 
 /* 手機版：取消固定高度，避免內容被裁掉 */
 @media (max-width: 767px) {
-
   .party-card--list,
   #view-home .party-card {
     min-height: 138px !important;
@@ -7329,7 +7388,6 @@ body {
 }
 
 @media (max-width: 380px) {
-
   .party-card--list,
   #view-home .party-card {
     min-height: 130px !important;
@@ -7415,7 +7473,10 @@ body {
   background: transparent;
   transform: scaleX(0.45);
   opacity: 0;
-  transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease,
+    background 0.18s ease;
 }
 
 .home-party-tab:hover {
@@ -7478,7 +7539,11 @@ body {
 
   body {
     background:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 34%),
+      radial-gradient(
+        circle at top left,
+        rgba(255, 255, 255, 0.72),
+        transparent 34%
+      ),
       linear-gradient(135deg, #f4efe6 0%, #e7e1d7 100%) !important;
   }
 
@@ -7487,7 +7552,8 @@ body {
     max-width: var(--desktop-shell-max) !important;
     min-height: 100dvh !important;
     margin: 0 auto !important;
-    padding: 28px 40px 56px calc(var(--desktop-sidebar-width) + var(--desktop-page-gap)) !important;
+    padding: 28px 40px 56px
+      calc(var(--desktop-sidebar-width) + var(--desktop-page-gap)) !important;
     background: var(--bg-cream) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -7551,7 +7617,9 @@ body {
   }
 
   .home-query-advanced .home-filter-row {
-    grid-template-columns: minmax(170px, 1fr) minmax(190px, 1fr) minmax(160px, 0.8fr) auto !important;
+    grid-template-columns:
+      minmax(170px, 1fr) minmax(190px, 1fr) minmax(160px, 0.8fr)
+      auto !important;
     gap: 14px !important;
   }
 
@@ -7635,7 +7703,10 @@ body {
   .bottom-nav {
     position: fixed !important;
     top: 28px !important;
-    left: max(28px, calc((100vw - var(--desktop-shell-max)) / 2 + 28px)) !important;
+    left: max(
+      28px,
+      calc((100vw - var(--desktop-shell-max)) / 2 + 28px)
+    ) !important;
     bottom: 28px !important;
     width: var(--desktop-sidebar-width) !important;
     max-width: var(--desktop-sidebar-width) !important;
@@ -7720,7 +7791,10 @@ body {
   }
 
   .fab {
-    right: max(44px, calc((100vw - var(--desktop-shell-max)) / 2 + 44px)) !important;
+    right: max(
+      44px,
+      calc((100vw - var(--desktop-shell-max)) / 2 + 44px)
+    ) !important;
     bottom: 44px !important;
     width: 58px !important;
     height: 58px !important;
@@ -7842,13 +7916,17 @@ body {
 
   .app {
     max-width: var(--desktop-shell-max) !important;
-    padding-left: calc(var(--desktop-sidebar-width) + var(--desktop-content-gap)) !important;
+    padding-left: calc(
+      var(--desktop-sidebar-width) + var(--desktop-content-gap)
+    ) !important;
     padding-right: 44px !important;
   }
 
   .bottom-nav {
-    left: max(var(--desktop-sidebar-left),
-        calc((100vw - var(--desktop-shell-max)) / 2 + var(--desktop-sidebar-left))) !important;
+    left: max(
+      var(--desktop-sidebar-left),
+      calc((100vw - var(--desktop-shell-max)) / 2 + var(--desktop-sidebar-left))
+    ) !important;
 
     top: 18px !important;
     bottom: 18px !important;
@@ -7989,8 +8067,10 @@ body {
   }
 
   .fab {
-    right: max(44px,
-        calc((100vw - var(--desktop-shell-max)) / 2 + 44px)) !important;
+    right: max(
+      44px,
+      calc((100vw - var(--desktop-shell-max)) / 2 + 44px)
+    ) !important;
   }
 }
 
@@ -8017,5 +8097,91 @@ body {
 
   .nav-label {
     font-size: 0.84rem !important;
+  }
+}
+
+/* ======================================================
+   FINAL HOME WIDTH CLEAN PATCH
+   目的：讓電腦版首頁飯局列表寬度與搜尋區一致。
+   範圍：只影響 768px 以上首頁，不影響手機版與原本功能。
+   ====================================================== */
+@media (min-width: 768px) {
+  #view-home.view--active {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #view-home.view--active .home-query-panel,
+  #view-home.view--active .home-party-tabs,
+  #view-home.view--active .home-party-panel,
+  #view-home.view--active .party-list {
+    width: 100% !important;
+    max-width: none !important;
+    grid-column: 1 / -1 !important;
+  }
+
+  #view-home.view--active .home-party-panel {
+    justify-self: stretch !important;
+  }
+
+  #view-home.view--active .party-card,
+  #view-home.view--active .party-card--list {
+    width: 100% !important;
+    max-width: none !important;
+    aspect-ratio: auto !important;
+    height: auto !important;
+    min-height: 136px !important;
+    max-height: 150px !important;
+  }
+
+  #view-home.view--active .party-card--list .party-card-thumb,
+  #view-home.view--active .party-card-thumb {
+    width: 190px !important;
+    min-width: 190px !important;
+    height: 108px !important;
+    min-height: 108px !important;
+  }
+
+  #view-home.view--active .party-card-body--list {
+    min-height: 108px !important;
+  }
+}
+
+/* ======================================================
+   PARTY CARD STATUS POSITION FINAL FIX
+   目的：讓首頁飯局卡片所有狀態標籤固定在右下角，
+   避免「已結束」狀態掉到餐廳/描述文字下方影響排版。
+   範圍：只調整首頁飯局列表卡片，不影響詳情頁與功能。
+   ====================================================== */
+#view-home .party-card--list {
+  position: relative !important;
+}
+
+#view-home .party-card--list .party-card-bottom-row {
+  position: static !important;
+}
+
+#view-home .party-card--list .party-card-status {
+  position: absolute !important;
+  right: 18px !important;
+  bottom: 16px !important;
+  z-index: 3 !important;
+  margin: 0 !important;
+  align-self: auto !important;
+  justify-self: auto !important;
+  grid-column: auto !important;
+}
+
+#view-home .party-card--list .party-card-restaurant {
+  padding-right: 112px !important;
+}
+
+@media (max-width: 767px) {
+  #view-home .party-card--list .party-card-status {
+    right: 10px !important;
+    bottom: 10px !important;
+  }
+
+  #view-home .party-card--list .party-card-restaurant {
+    padding-right: 72px !important;
   }
 }

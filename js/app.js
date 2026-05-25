@@ -2816,7 +2816,9 @@
 
     function createOtherPartyCard(party) {
         const card = createPartyCard(party, false);
-        card.className = "party-card party-card--other";
+        // 其他飯局沿用與「我的飯局」相同的列表版 class，只切換來源標記。
+        // 這是純排版調整，不更動飯局狀態判斷或加入流程。
+        card.className = "party-card party-card--other party-card--list";
         card.dataset.source = "other";
         card.setAttribute("aria-label", `查看 ${party.partyName || "飯局"} 詳情`);
         return card;
