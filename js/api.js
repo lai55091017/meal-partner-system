@@ -141,6 +141,20 @@ const api = {
         });
     },
 
+    editChatMessage(partyId, messageId, userId, message) {
+        return requestApi(`/chats/${partyId}/messages/${messageId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ userId, message }),
+        });
+    },
+
+    recallChatMessage(partyId, messageId, userId) {
+        return requestApi(`/chats/${partyId}/messages/${messageId}/recall`, {
+            method: "PATCH",
+            body: JSON.stringify({ userId }),
+        });
+    },
+
     submitRatings(ratingData) {
         return requestApi("/ratings", {
             method: "POST",

@@ -146,6 +146,9 @@
     const chatForm = $("#chat-form");
     const chatInput = $("#chat-input");
     const chatBackBtn = $("#chat-back-btn");
+    const chatContextMenu = $("#chat-context-menu");
+    const chatContextEditBtn = chatContextMenu?.querySelector('[data-action="edit"]');
+    const chatContextRecallBtn = chatContextMenu?.querySelector('[data-action="recall"]');
     const profileForm = $("#profile-form");
     const profileEditBtn = $("#profile-edit-btn");
     const profileSaveBtn = $("#profile-save-btn");
@@ -235,6 +238,11 @@
     let backendParties = [];
     let currentChatMessages = [];
     let chatPreviewCache = {};
+    let chatEditingMessageId = null;
+    let chatContextMessageId = null;
+    let chatPollTimer = null;
+    const CHAT_POLL_MS = 4000;
+    const RECALLED_MESSAGE_TEXT = "此訊息已收回";
     let ratingReviewedCache = new Set();
     let receivedRatingsCache = [];
     let ratingSummaryCache = { average: null, count: 0 };
@@ -2967,10 +2975,16 @@
         return party.isMine === true || isCurrentUserMember(party);
     }
 
+    function getChatDisplayText(message) {
+        if (!message) return "";
+        if (message.isRecalled) return RECALLED_MESSAGE_TEXT;
+        return message.text || "";
+    }
+
     function getLastChatPreview(partyId) {
         const cachedMessage = chatPreviewCache[partyId];
         if (cachedMessage) {
-            return `${cachedMessage.senderName || "使用者"}：${cachedMessage.text || ""}`;
+            return `${cachedMessage.senderName || "使用者"}：${getChatDisplayText(cachedMessage)}`;
         }
 
         // 後端聊天室尚未載入前，保留舊 localStorage 訊息作為暫時預覽。
@@ -2979,7 +2993,7 @@
         const lastMessage = messages[messages.length - 1];
 
         if (!lastMessage) return "尚未有訊息，可以開始討論集合時間或地點。";
-        return `${lastMessage.senderName || "使用者"}：${lastMessage.text || ""}`;
+        return `${lastMessage.senderName || "使用者"}：${getChatDisplayText(lastMessage)}`;
     }
 
     function renderChatRoomList() {
@@ -3060,6 +3074,10 @@
         }
 
         restoreChatRoom(party.id);
+        stopChatPolling();
+        hideChatContextMenu();
+        chatEditingMessageId = null;
+        chatContextMessageId = null;
         currentChatPartyId = party.id;
         currentChatMessages = [];
 
@@ -3082,6 +3100,7 @@
 
             renderChatMessages();
             renderChatRoomList();
+            startChatPolling();
             chatInput?.focus();
         } catch (error) {
             console.error("讀取聊天室訊息失敗：", error);
@@ -3092,10 +3111,52 @@
     }
 
     function closeChatRoom() {
+        stopChatPolling();
+        hideChatContextMenu();
+        chatEditingMessageId = null;
+        chatContextMessageId = null;
         currentChatPartyId = null;
         currentChatMessages = [];
         if (chatRoomPanel) chatRoomPanel.hidden = true;
         renderChatRoomList();
+    }
+
+    function startChatPolling() {
+        stopChatPolling();
+        if (!currentChatPartyId || !isBackendPartyId(currentChatPartyId) || !currentUser?.id) return;
+
+        chatPollTimer = window.setInterval(() => {
+            refreshChatMessagesSilently();
+        }, CHAT_POLL_MS);
+    }
+
+    function stopChatPolling() {
+        if (chatPollTimer) {
+            window.clearInterval(chatPollTimer);
+            chatPollTimer = null;
+        }
+    }
+
+    async function refreshChatMessagesSilently() {
+        if (!currentChatPartyId || !currentUser?.id || !isBackendPartyId(currentChatPartyId)) return;
+        if (chatEditingMessageId) return;
+
+        try {
+            const result = await api.getChatMessages(currentChatPartyId, currentUser.id);
+            const nextMessages = (result.messages || []).map(mapBackendChatMessage);
+            const changed = JSON.stringify(nextMessages) !== JSON.stringify(currentChatMessages);
+
+            if (!changed) return;
+
+            currentChatMessages = nextMessages;
+            const lastMessage = nextMessages[nextMessages.length - 1];
+            if (lastMessage) chatPreviewCache[currentChatPartyId] = lastMessage;
+
+            renderChatMessages();
+            renderChatRoomList();
+        } catch (error) {
+            console.warn("同步聊天室訊息失敗：", error);
+        }
     }
 
     function mapBackendChatMessage(message) {
@@ -3105,8 +3166,164 @@
             senderId: String(message.user_id),
             senderName: message.sender_name || message.sender_account || "使用者",
             text: message.message || "",
+            isRecalled: message.is_recalled === true,
+            editedAt: message.edited_at || null,
             createdAt: message.created_at || new Date().toISOString(),
         };
+    }
+
+    function findChatMessageById(messageId) {
+        return (currentChatMessages || []).find((message) => String(message.id) === String(messageId)) || null;
+    }
+
+    function hideChatContextMenu() {
+        if (!chatContextMenu) return;
+        chatContextMenu.hidden = true;
+        chatContextMessageId = null;
+    }
+
+    function showChatContextMenu(event, messageId) {
+        if (!chatContextMenu) return;
+
+        const message = findChatMessageById(messageId);
+        if (!message || message.isRecalled) return;
+
+        chatContextMessageId = String(messageId);
+        chatContextMenu.hidden = false;
+
+        const menuWidth = 160;
+        const menuHeight = 88;
+        const maxLeft = window.innerWidth - menuWidth - 8;
+        const maxTop = window.innerHeight - menuHeight - 8;
+
+        chatContextMenu.style.left = `${Math.min(event.clientX, maxLeft)}px`;
+        chatContextMenu.style.top = `${Math.min(event.clientY, maxTop)}px`;
+    }
+
+    function startChatMessageEdit(messageId) {
+        const message = findChatMessageById(messageId);
+        if (!message || message.isRecalled) return;
+
+        hideChatContextMenu();
+        chatEditingMessageId = String(messageId);
+        renderChatMessages();
+
+        const input = chatMessageList?.querySelector(".chat-message-edit-input");
+        input?.focus();
+        if (input) {
+            input.selectionStart = input.value.length;
+            input.selectionEnd = input.value.length;
+        }
+    }
+
+    function cancelChatMessageEdit() {
+        chatEditingMessageId = null;
+        renderChatMessages();
+    }
+
+    function updateLocalChatMessage(partyId, messageId, updater) {
+        const messagesByParty = loadChatMessages();
+        const partyMessages = messagesByParty[partyId] || [];
+        const index = partyMessages.findIndex((item) => String(item.id) === String(messageId));
+
+        if (index === -1) return false;
+
+        partyMessages[index] = updater(partyMessages[index]);
+        messagesByParty[partyId] = partyMessages;
+        saveChatMessages(messagesByParty);
+        return true;
+    }
+
+    function applyChatMessageUpdate(updatedMessage) {
+        const index = currentChatMessages.findIndex((item) => String(item.id) === String(updatedMessage.id));
+        if (index === -1) {
+            currentChatMessages.push(updatedMessage);
+        } else {
+            currentChatMessages[index] = updatedMessage;
+        }
+
+        chatPreviewCache[currentChatPartyId] = updatedMessage;
+    }
+
+    async function submitChatMessageEdit(messageId) {
+        const message = findChatMessageById(messageId);
+        if (!message || message.isRecalled) return;
+
+        const input = chatMessageList?.querySelector(".chat-message-edit-input");
+        const nextText = String(input?.value || "").trim();
+
+        if (!nextText) {
+            alert("訊息內容不能空白");
+            return;
+        }
+
+        try {
+            let updatedMessage;
+
+            if (isBackendPartyId(currentChatPartyId) && /^\d+$/.test(String(messageId))) {
+                const result = await api.editChatMessage(
+                    currentChatPartyId,
+                    messageId,
+                    currentUser.id,
+                    nextText
+                );
+                updatedMessage = mapBackendChatMessage(result.chatMessage);
+            } else {
+                updatedMessage = {
+                    ...message,
+                    text: nextText,
+                    editedAt: new Date().toISOString(),
+                };
+                updateLocalChatMessage(currentChatPartyId, messageId, () => updatedMessage);
+            }
+
+            applyChatMessageUpdate(updatedMessage);
+            chatEditingMessageId = null;
+            renderChatMessages();
+            renderChatRoomList();
+        } catch (error) {
+            console.error("編輯訊息失敗：", error);
+            alert(error.message || "編輯訊息失敗");
+        }
+    }
+
+    async function recallChatMessageById(messageId) {
+        const message = findChatMessageById(messageId);
+        if (!message || message.isRecalled) return;
+
+        if (!confirm("確定要收回這則訊息嗎？所有人將看到「此訊息已收回」。")) return;
+
+        hideChatContextMenu();
+
+        try {
+            let updatedMessage;
+
+            if (isBackendPartyId(currentChatPartyId) && /^\d+$/.test(String(messageId))) {
+                const result = await api.recallChatMessage(
+                    currentChatPartyId,
+                    messageId,
+                    currentUser.id
+                );
+                updatedMessage = mapBackendChatMessage(result.chatMessage);
+            } else {
+                updatedMessage = {
+                    ...message,
+                    isRecalled: true,
+                };
+                updateLocalChatMessage(currentChatPartyId, messageId, () => updatedMessage);
+            }
+
+            applyChatMessageUpdate(updatedMessage);
+            if (chatEditingMessageId === String(messageId)) {
+                chatEditingMessageId = null;
+            }
+
+            renderChatMessages();
+            renderChatRoomList();
+        } catch (error) {
+            console.error("收回訊息失敗：", error);
+            alert(error.message || "收回訊息失敗");
+        }
     }
 
     function renderChatMessages() {
@@ -3126,23 +3343,32 @@
         }
 
         messages.forEach((message) => {
+            const isMine = String(message.senderId) === String(currentUserId);
+            const isRecalled = message.isRecalled === true;
+            const isEditing = chatEditingMessageId === String(message.id);
+
             const item = document.createElement("li");
             item.className = "chat-message";
-            item.classList.toggle("chat-message--mine", String(message.senderId) === String(currentUserId));
+            item.classList.toggle("chat-message--mine", isMine);
+            item.classList.toggle("chat-message--recalled", isRecalled);
+            item.dataset.messageId = message.id;
 
             const sender = document.createElement("p");
             sender.className = "chat-message-sender";
             sender.textContent = message.senderName || "使用者";
 
-            const bubble = document.createElement("p");
-            bubble.className = "chat-message-bubble";
-            bubble.textContent = message.text || "";
-
             const time = document.createElement("p");
             time.className = "chat-message-time";
             time.textContent = formatMessageTime(message.createdAt);
 
-            if (String(message.senderId) !== String(currentUserId) && !isAdminUser() && isBackendPartyId(message.id)) {
+            if (message.editedAt && !isRecalled) {
+                const editedLabel = document.createElement("span");
+                editedLabel.className = "chat-message-edited";
+                editedLabel.textContent = "已編輯";
+                time.appendChild(editedLabel);
+            }
+
+            if (!isMine && !isAdminUser() && isBackendPartyId(currentChatPartyId) && !isRecalled) {
                 const reportBtn = document.createElement("button");
                 reportBtn.type = "button";
                 reportBtn.className = "chat-report-btn";
@@ -3161,7 +3387,62 @@
                 time.appendChild(reportBtn);
             }
 
-            item.append(sender, bubble, time);
+            if (isEditing && !isRecalled) {
+                const editWrap = document.createElement("div");
+                editWrap.className = "chat-message-edit";
+
+                const editInput = document.createElement("textarea");
+                editInput.className = "chat-message-edit-input";
+                editInput.value = message.text || "";
+                editInput.setAttribute("aria-label", "編輯訊息內容");
+
+                const editActions = document.createElement("div");
+                editActions.className = "chat-message-edit-actions";
+
+                const confirmBtn = document.createElement("button");
+                confirmBtn.type = "button";
+                confirmBtn.className = "chat-message-edit-confirm";
+                confirmBtn.textContent = "確認";
+                confirmBtn.addEventListener("click", () => {
+                    submitChatMessageEdit(message.id);
+                });
+
+                const cancelBtn = document.createElement("button");
+                cancelBtn.type = "button";
+                cancelBtn.className = "chat-message-edit-cancel";
+                cancelBtn.textContent = "取消";
+                cancelBtn.addEventListener("click", () => {
+                    cancelChatMessageEdit();
+                });
+
+                editInput.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        submitChatMessageEdit(message.id);
+                    }
+                    if (event.key === "Escape") {
+                        event.preventDefault();
+                        cancelChatMessageEdit();
+                    }
+                });
+
+                editActions.append(confirmBtn, cancelBtn);
+                editWrap.append(editInput, editActions);
+                item.append(sender, editWrap, time);
+            } else {
+                const bubble = document.createElement("p");
+                bubble.className = "chat-message-bubble";
+                bubble.textContent = getChatDisplayText(message);
+                item.append(sender, bubble, time);
+            }
+
+            if (isMine && !isRecalled && !isEditing) {
+                item.addEventListener("contextmenu", (event) => {
+                    event.preventDefault();
+                    showChatContextMenu(event, message.id);
+                });
+            }
+
             chatMessageList.appendChild(item);
         });
 
@@ -3194,6 +3475,8 @@
                     senderId: getCurrentUserId(),
                     senderName: profile.name || currentUser?.name || currentUser?.account || "目前使用者",
                     text: text.trim(),
+                    isRecalled: false,
+                    editedAt: null,
                     createdAt: new Date().toISOString(),
                 };
 
@@ -4670,6 +4953,30 @@
         });
 
         chatBackBtn?.addEventListener("click", closeChatRoom);
+
+        chatContextEditBtn?.addEventListener("click", () => {
+            if (!chatContextMessageId) return;
+            startChatMessageEdit(chatContextMessageId);
+        });
+
+        chatContextRecallBtn?.addEventListener("click", () => {
+            if (!chatContextMessageId) return;
+            recallChatMessageById(chatContextMessageId);
+        });
+
+        document.addEventListener("click", (event) => {
+            if (!chatContextMenu || chatContextMenu.hidden) return;
+            if (chatContextMenu.contains(event.target)) return;
+            hideChatContextMenu();
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                hideChatContextMenu();
+            }
+        });
+
+        document.addEventListener("scroll", hideChatContextMenu, true);
 
         signoutBtn?.addEventListener("click", () => {
             if (confirm("確定要登出嗎？")) {

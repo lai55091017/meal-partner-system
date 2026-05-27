@@ -474,6 +474,30 @@
               ></textarea>
               <button type="submit" class="chat-send-btn">送出</button>
             </form>
+
+            <div
+              id="chat-context-menu"
+              class="chat-context-menu"
+              role="menu"
+              hidden
+            >
+              <button
+                type="button"
+                class="chat-context-menu__item"
+                data-action="edit"
+                role="menuitem"
+              >
+                編輯訊息
+              </button>
+              <button
+                type="button"
+                class="chat-context-menu__item"
+                data-action="recall"
+                role="menuitem"
+              >
+                收回訊息
+              </button>
+            </div>
           </section>
         </section>
       </main>

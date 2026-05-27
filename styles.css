@@ -3104,6 +3104,116 @@ main[hidden] {
   color: var(--white);
 }
 
+.chat-message--recalled .chat-message-bubble {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.72);
+  font-style: italic;
+}
+
+.chat-message--mine.chat-message--recalled .chat-message-bubble {
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.chat-message-edited {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: normal;
+}
+
+.chat-message--mine .chat-message-edited {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.chat-message-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.chat-message-edit-input {
+  width: 100%;
+  min-width: 200px;
+  min-height: 64px;
+  max-height: 140px;
+  padding: 10px 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text-on-light);
+  font-size: 0.86rem;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.chat-message-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.chat-message-edit-confirm,
+.chat-message-edit-cancel {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat-message-edit-confirm {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.chat-message-edit-cancel {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.chat-context-menu {
+  position: fixed;
+  z-index: 120;
+  min-width: 148px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #d8d4cc;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.chat-context-menu__item {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-on-light);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.chat-context-menu__item:hover,
+.chat-context-menu__item:focus-visible {
+  background: #f3efe8;
+}
+
+.chat-context-menu__item[data-action="recall"] {
+  color: #a85a5a;
+}
+
 .chat-form {
   display: flex;
   gap: 10px;
