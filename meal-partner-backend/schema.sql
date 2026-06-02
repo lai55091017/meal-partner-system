@@ -145,3 +145,15 @@ ALTER TABLE reports ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURREN
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_once_per_target
 ON reports (reporter_id, target_type, target_id, COALESCE(party_id, 0));
+
+
+-- 學生證驗證：第一階段採「上傳學生證 + 後台人工審核」。
+-- pending=等待審核、approved=已通過、rejected=已退回。
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_status VARCHAR(20) DEFAULT 'approved';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS student_card_url TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS student_card_review_note TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS student_card_reviewed_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS student_card_reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+
+UPDATE users SET verify_status = 'approved' WHERE verify_status IS NULL;
+UPDATE users SET verify_status = 'approved' WHERE account = 'admin';

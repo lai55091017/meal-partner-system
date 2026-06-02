@@ -18,6 +18,23 @@ async function ensureRatingsTable() {
   `);
 }
 
+async function getUserForRegularAction(db, userId) {
+  const result = await db.query(
+    `
+    SELECT id, account, role
+    FROM users
+    WHERE id = $1
+    `,
+    [userId]
+  );
+
+  return result.rows[0] || null;
+}
+
+function isAdminUserRow(user) {
+  return user?.role === "admin" || user?.account === "admin";
+}
+
 ensureRatingsTable().catch((error) => {
   console.error("ratings 資料表建立失敗：", error);
 });

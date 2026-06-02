@@ -89,6 +89,7 @@
     );
 
     const navItems = $$(".nav-item");
+    const notificationNavItem = document.querySelector('.nav-item[data-nav="notifications"]');
     const fab = $("#fab");
     const filterBtn = $("#filter-btn");
     const filterMenu = $("#filter-menu");
@@ -106,6 +107,9 @@
     const myPartyTabCount = $("#my-party-tab-count");
     const otherPartyTabCount = $("#other-party-tab-count");
     const createForm = $("#create-form");
+    const createDateInput = $("#create-date");
+    const createTimeSelect = $("#create-time");
+    const createMealTypeSelect = $("#create-meal-type");
     const signoutBtn = $("#profile-signout");
 
     const loginForm = $("#login-form");
@@ -117,6 +121,7 @@
     const registerName = $("#register-name");
     const registerPassword = $("#register-password");
     const registerPasswordConfirm = $("#register-password-confirm");
+    const registerStudentCard = $("#register-student-card");
     const registerMessage = $("#register-message");
     const loginTabBtn = $("#login-tab-btn");
     const registerTabBtn = $("#register-tab-btn");
@@ -576,7 +581,10 @@
     function loadLocalNotifications() {
         try {
             const saved = localStorage.getItem(NOTIFICATIONS_KEY);
-            return saved ? JSON.parse(saved) : [];
+            return saved ? JSON.parse(saved).map((notice) => ({
+                ...notice,
+                isRead: notice.isRead === true,
+            })) : [];
         } catch (error) {
             localStorage.removeItem(NOTIFICATIONS_KEY);
             return [];
@@ -585,6 +593,47 @@
 
     function saveLocalNotifications(notifications) {
         localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications.slice(0, 50)));
+    }
+
+    function updateNotificationRedDot(notifications = []) {
+        if (!notificationNavItem) return;
+        const hasUnread = notifications.some((notice) => notice.isRead !== true);
+        notificationNavItem.classList.toggle("nav-item--has-unread", hasUnread);
+        notificationNavItem.setAttribute(
+            "aria-label",
+            hasUnread ? "通知，有未讀通知" : "通知"
+        );
+    }
+
+    async function refreshNotificationRedDot() {
+        const notifications = await loadNotifications();
+        updateNotificationRedDot(notifications);
+        return notifications;
+    }
+
+    async function markNotificationsAsRead() {
+        try {
+            if (currentUser?.id) {
+                await api.markNotificationsRead(currentUser.id);
+            } else {
+                const notifications = loadLocalNotifications().map((notice) => ({
+                    ...notice,
+                    isRead: true,
+                }));
+                saveLocalNotifications(notifications);
+            }
+        } catch (error) {
+            console.error("標記通知已讀失敗：", error);
+        }
+
+        updateNotificationRedDot([]);
+    }
+
+    async function openNotificationsView() {
+        await renderNotifications();
+        switchView("notifications");
+        await markNotificationsAsRead();
+        await renderNotifications();
     }
 
     function mapBackendNotification(notice) {
@@ -651,6 +700,7 @@
                     message,
                     partyId,
                     createdAt,
+                    isRead: false,
                 });
                 saveLocalNotifications(notifications);
             }
@@ -675,6 +725,86 @@
 
 
     /* ======================================================
+     * 建立飯局日期與餐期時間選項
+     * ====================================================== */
+    const MEAL_TIME_OPTIONS = {
+        早餐: buildHalfHourOptions("07:00", "10:30"),
+        午餐: buildHalfHourOptions("11:00", "14:00"),
+        下午茶: buildHalfHourOptions("14:00", "17:00"),
+        晚餐: buildHalfHourOptions("17:00", "21:00"),
+        宵夜: [...buildHalfHourOptions("21:00", "23:30"), ...buildHalfHourOptions("00:00", "02:00")],
+        其他: buildHalfHourOptions("00:00", "23:30"),
+    };
+
+    function timeToMinutes(timeText) {
+        const [hour, minute] = String(timeText).split(":").map(Number);
+        return hour * 60 + minute;
+    }
+
+    function minutesToTime(totalMinutes) {
+        const hour = Math.floor(totalMinutes / 60).toString().padStart(2, "0");
+        const minute = (totalMinutes % 60).toString().padStart(2, "0");
+        return `${hour}:${minute}`;
+    }
+
+    function buildHalfHourOptions(start, end) {
+        const options = [];
+        const startMinutes = timeToMinutes(start);
+        const endMinutes = timeToMinutes(end);
+        for (let current = startMinutes; current <= endMinutes; current += 30) {
+            options.push(minutesToTime(current));
+        }
+        return options;
+    }
+
+    function getTodayDateValue() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    function formatDateLabel(dateValue) {
+        const match = String(dateValue || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return "";
+        return `${match[1]}/${match[2]}/${match[3]}`;
+    }
+
+    function getCreatePartyTimeValue() {
+        const dateValue = createDateInput?.value || "";
+        const timeValue = createTimeSelect?.value || "";
+        const dateLabel = formatDateLabel(dateValue);
+        if (!dateLabel || !timeValue) return "";
+        return `${dateLabel} ${timeValue}`;
+    }
+
+    function updateCreateTimeOptions(preferredTime = "") {
+        if (!createTimeSelect) return;
+
+        const mealType = createMealTypeSelect?.value || "午餐";
+        const options = MEAL_TIME_OPTIONS[mealType] || MEAL_TIME_OPTIONS["其他"];
+        const fallbackTime = preferredTime && options.includes(preferredTime)
+            ? preferredTime
+            : options.includes("18:30")
+                ? "18:30"
+                : options[Math.floor(options.length / 2)] || "";
+
+        createTimeSelect.innerHTML = options.map((time) => (
+            `<option value="${time}"${time === fallbackTime ? " selected" : ""}>${time}</option>`
+        )).join("");
+    }
+
+    function initCreateScheduleFields() {
+        const today = getTodayDateValue();
+        if (createDateInput) {
+            createDateInput.min = today;
+            if (!createDateInput.value) createDateInput.value = today;
+        }
+        updateCreateTimeOptions(createTimeSelect?.value || "");
+    }
+
+    /* ======================================================
      * 評價資料功能
      * ====================================================== */
     function loadRatings() {
@@ -693,12 +823,20 @@
 
     function parsePartyEndTime(party) {
         const text = String(party?.time || "");
-        const match = text.match(/今天\s*(\d{1,2}):(\d{2})/);
-        if (!match) return null;
+        const dateTimeMatch = text.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*(\d{1,2}):(\d{2})/);
+        if (dateTimeMatch) {
+            const [, year, month, day, hour, minute] = dateTimeMatch;
+            return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), 0, 0);
+        }
 
-        const end = new Date();
-        end.setHours(Number(match[1]), Number(match[2]), 0, 0);
-        return end;
+        const todayMatch = text.match(/今天\s*(\d{1,2}):(\d{2})/);
+        if (todayMatch) {
+            const end = new Date();
+            end.setHours(Number(todayMatch[1]), Number(todayMatch[2]), 0, 0);
+            return end;
+        }
+
+        return null;
     }
 
     function isPartyEnded(party) {
@@ -711,7 +849,7 @@
 
     function getPartyEndHint(party) {
         const endTime = parsePartyEndTime(party);
-        if (!endTime) return "此飯局時間格式無法判斷，請使用『今天 HH:mm』的時間選項。";
+        if (!endTime) return "此飯局時間格式無法判斷，請確認飯局日期與時間。";
         return `飯局約在 ${formatMessageTime(endTime.toISOString())} 後才能評價。`;
     }
 
@@ -872,6 +1010,7 @@
         if (!notificationList) return;
 
         const notifications = await loadNotifications();
+        updateNotificationRedDot(notifications);
         notificationList.innerHTML = "";
 
         if (notificationEmpty) notificationEmpty.hidden = notifications.length > 0;
@@ -1189,31 +1328,29 @@
         }
     }
 
-    async function registerNewAccount(account, password, name) {
+    async function registerNewAccount(account, password, name, studentCardFile) {
         try {
-            if (registerMessage) registerMessage.textContent = "註冊中...";
+            if (registerMessage) registerMessage.textContent = "上傳學生證中...";
             if (registerTabBtn) registerTabBtn.disabled = true;
 
-            const result = await api.register(account, password, name);
+            const fileError = validateImageFile(studentCardFile);
+            if (fileError) {
+                if (registerMessage) registerMessage.textContent = fileError;
+                return;
+            }
 
-            currentUser = result.user;
-            localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser));
-            updateAdminNavVisibility();
+            const studentCardUrl = await uploadImageFile(studentCardFile, "student-card");
 
-            const profile = mapBackendProfileToFrontend(currentUser, []);
-            saveProfileData(profile);
+            if (registerMessage) registerMessage.textContent = "送出審核中...";
+
+            await api.register(account, password, name, studentCardUrl);
 
             if (registerForm) registerForm.reset();
             if (loginForm) loginForm.reset();
+            if (loginMessage) loginMessage.textContent = "註冊申請已送出，請等待管理員審核學生證後再登入。";
             if (registerMessage) registerMessage.textContent = "";
-            if (loginMessage) loginMessage.textContent = "";
 
-            await loadProfileFromBackend({ silent: true });
-            setProfileEditMode(false);
-            await loadBackendParties();
-            renderChatRoomList();
-            switchView(isAdminUser() ? "admin" : "profile");
-            if (isAdminUser()) loadAdminDashboard();
+            showAuthMode("login");
         } catch (error) {
             console.error("註冊失敗：", error);
 
@@ -1324,6 +1461,7 @@
         updateAdminNavVisibility();
 
         if (safeViewKey === "create") {
+            initCreateScheduleFields();
             loadRestaurants();
         }
 
@@ -1354,12 +1492,13 @@
 
     function inferMealType(party) {
         const explicit = party.mealType || party.meal || party.category;
-        const validTypes = ["早餐", "午餐", "晚餐", "宵夜"];
+        const validTypes = ["早餐", "午餐", "下午茶", "晚餐", "宵夜", "其他"];
         if (validTypes.includes(explicit)) return explicit;
 
         const text = `${party.partyName || ""} ${party.time || ""} ${party.description || ""}`;
         if (/早餐|早上|上午|早午餐/.test(text)) return "早餐";
         if (/午餐|中午|午間/.test(text)) return "午餐";
+        if (/下午茶|點心|下午/.test(text)) return "下午茶";
         if (/晚餐|晚上|晚間|傍晚/.test(text)) return "晚餐";
         if (/宵夜|夜宵|凌晨/.test(text)) return "宵夜";
         return "午餐";
@@ -1709,8 +1848,8 @@
             restaurantOpeningHours: selectedRestaurant?.openingHours || customRestaurant?.openingHours || "",
             restaurantAddress: selectedRestaurant?.address || customRestaurant?.address || "",
             restaurantFeature: selectedRestaurant?.feature || customRestaurant?.feature || "",
-            time: $("#create-time")?.value.trim() || "時間",
-            mealType: $("#create-meal-type")?.value || "午餐",
+            time: getCreatePartyTimeValue() || "時間",
+            mealType: createMealTypeSelect?.value || "午餐",
             maxMembers: $("#create-max-members")?.value.trim() || 4,
             description: $("#create-description")?.value.trim() || "尚未填寫飯局介紹。",
             imageUrl: "",
@@ -1731,8 +1870,8 @@
             restaurantId: selectedRestaurant?.id || "",
             customRestaurant,
             store: selectedRestaurant?.name || customRestaurant?.name || "",
-            mealType: $("#create-meal-type")?.value || "午餐",
-            partyTime: $("#create-time")?.value || "",
+            mealType: createMealTypeSelect?.value || "午餐",
+            partyTime: getCreatePartyTimeValue(),
             maxPeople: Number($("#create-max-members")?.value || 0),
             description: $("#create-description")?.value.trim() || "",
             imageUrl: "",
@@ -1751,6 +1890,7 @@
             if (!partyData.customRestaurant.address) return "請輸入新增餐廳地址";
         }
         if (!partyData.mealType) return "請選擇餐期";
+        if (!createDateInput?.value) return "請選擇日期";
         if (!partyData.partyTime) return "請選擇時間";
         if (!partyData.maxPeople || partyData.maxPeople < 2) return "人數上限至少需要 2 人";
 
@@ -3550,6 +3690,18 @@
     }
 
 
+    function getAdminPartyStatusText(status) {
+        const labels = {
+            open: "招募中",
+            ended: "已結束",
+            cancelled: "已取消",
+            canceled: "已取消",
+        };
+
+        return labels[status] || status || "-";
+    }
+
+
     function getRestaurantFormData() {
         return {
             name: adminRestaurantName?.value.trim() || "",
@@ -3632,13 +3784,27 @@
         });
     }
 
+    function getVerificationStatusLabel(status) {
+        const labels = {
+            pending: "待審核",
+            approved: "已通過",
+            rejected: "已退回",
+        };
+
+        return labels[status] || "未設定";
+    }
+
+    function getStudentCardUrl(url) {
+        return getImageUrl(url);
+    }
+
     function renderAdminUsers(users = []) {
         if (!adminUserList) return;
         adminUserList.innerHTML = "";
 
         if (!users.length) {
             const row = document.createElement("tr");
-            row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有使用者資料。</td>`;
+            row.innerHTML = `<td colspan="7" class="admin-empty-cell">目前沒有使用者資料。</td>`;
             adminUserList.appendChild(row);
             return;
         }
@@ -3647,6 +3813,9 @@
             const row = document.createElement("tr");
             const ratingText = user.average_rating == null ? "尚無" : `${Number(user.average_rating).toFixed(1)} / 5`;
             const isSelf = String(user.id) === String(currentUser?.id);
+            const verifyStatus = user.verify_status || "approved";
+            const studentCardUrl = getStudentCardUrl(user.student_card_url || "");
+            const verifyClass = `admin-verify-badge admin-verify-badge--${verifyStatus}`;
 
             row.innerHTML = `
                 <td>${user.id}</td>
@@ -3655,15 +3824,47 @@
                     <span class="admin-muted">${user.account || ""}</span>
                 </td>
                 <td>${user.role === "admin" ? "管理員" : "一般"}</td>
+                <td>
+                    <span class="${verifyClass}">${getVerificationStatusLabel(verifyStatus)}</span>
+                    ${studentCardUrl ? `<br /><a class="admin-student-card-link" href="${studentCardUrl}" target="_blank" rel="noopener">查看學生證</a>` : `<br /><span class="admin-muted">未上傳學生證</span>`}
+                    ${user.student_card_review_note ? `<br /><span class="admin-muted">備註：${user.student_card_review_note}</span>` : ""}
+                </td>
                 <td>${user.hosted_count || 0}</td>
                 <td>${ratingText}</td>
                 <td></td>
             `;
 
             const actionCell = row.querySelector("td:last-child");
+
+            if (user.role !== "admin") {
+                const approveBtn = document.createElement("button");
+                approveBtn.type = "button";
+                approveBtn.className = "admin-small-btn admin-approve-btn";
+                approveBtn.textContent = "通過";
+                approveBtn.disabled = verifyStatus === "approved";
+                approveBtn.addEventListener("click", async () => {
+                    await api.adminUpdateUserVerification(user.id, currentUser.id, "approved");
+                    await loadAdminDashboard();
+                });
+
+                const rejectBtn = document.createElement("button");
+                rejectBtn.type = "button";
+                rejectBtn.className = "admin-danger-btn admin-small-btn";
+                rejectBtn.textContent = "退回";
+                rejectBtn.disabled = verifyStatus === "rejected";
+                rejectBtn.addEventListener("click", async () => {
+                    const note = prompt("請輸入退回原因，可留空：", user.student_card_review_note || "");
+                    if (note === null) return;
+                    await api.adminUpdateUserVerification(user.id, currentUser.id, "rejected", note);
+                    await loadAdminDashboard();
+                });
+
+                actionCell.append(approveBtn, rejectBtn);
+            }
+
             const deleteBtn = document.createElement("button");
             deleteBtn.type = "button";
-            deleteBtn.className = "admin-danger-btn";
+            deleteBtn.className = "admin-danger-btn admin-small-btn";
             deleteBtn.textContent = isSelf ? "自己" : "刪除";
             deleteBtn.disabled = isSelf;
             deleteBtn.addEventListener("click", async () => {
@@ -3674,15 +3875,6 @@
             actionCell.appendChild(deleteBtn);
             adminUserList.appendChild(row);
         });
-    }
-
-    function getAdminPartyStatusText(status) {
-        const labels = {
-            open: "招募中",
-            ended: "已結束",
-            cancelled: "已取消",
-        };
-        return labels[status] || status || "未知";
     }
 
     function renderAdminParties(parties = []) {
@@ -4305,8 +4497,7 @@
                 }
 
                 if (navKey === "notifications") {
-                    renderNotifications();
-                    switchView("notifications");
+                    openNotificationsView();
                     return;
                 }
 
@@ -4397,6 +4588,9 @@
             });
         });
 
+        createMealTypeSelect?.addEventListener("change", () => updateCreateTimeOptions());
+        createDateInput?.addEventListener("change", initCreateScheduleFields);
+
         searchInput?.addEventListener("input", renderHomeParties);
         mealTypeFilter?.addEventListener("change", renderHomeParties);
         restaurantCategoryFilter?.addEventListener("change", renderHomeParties);
@@ -4432,9 +4626,21 @@
             const name = registerName?.value.trim();
             const password = registerPassword?.value.trim();
             const passwordConfirm = registerPasswordConfirm?.value.trim();
+            const studentCardFile = registerStudentCard?.files?.[0] || null;
 
             if (!account || !name || !password || !passwordConfirm) {
                 if (registerMessage) registerMessage.textContent = "請完整填寫帳號、姓名與密碼";
+                return;
+            }
+
+            if (!studentCardFile) {
+                if (registerMessage) registerMessage.textContent = "請上傳學生證照片，等待管理員審核";
+                return;
+            }
+
+            const studentCardError = validateImageFile(studentCardFile);
+            if (studentCardError) {
+                if (registerMessage) registerMessage.textContent = studentCardError;
                 return;
             }
 
@@ -4448,7 +4654,7 @@
                 return;
             }
 
-            registerNewAccount(account, password, name);
+            registerNewAccount(account, password, name, studentCardFile);
         });
 
         bindPartyCard(otherPartyCard, { allowJoin: true });
@@ -4597,6 +4803,7 @@
                 );
 
                 createForm.reset();
+                initCreateScheduleFields();
                 resetCustomRestaurantForm();
                 updateSelectedRestaurantInfo();
 
@@ -4696,6 +4903,11 @@
         renderChatRoomList();
         renderNotifications();
         loadRestaurants();
+
+        // 定期更新通知紅點，讓其他使用者或後台產生的新通知也能被提醒。
+        if (!isAdminUser()) {
+            setInterval(refreshNotificationRedDot, 30000);
+        }
 
         if (isAdminUser()) {
             switchView("admin");

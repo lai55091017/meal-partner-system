@@ -108,6 +108,39 @@ router.post("/", async (req, res) => {
 });
 
 /**
+ * 將指定使用者所有通知標記為已讀
+ * PUT /api/notifications/:userId/read
+ */
+router.put("/:userId/read", async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      `
+      UPDATE notifications
+      SET is_read = TRUE
+      WHERE user_id = $1 AND is_read = FALSE
+      RETURNING id
+      `,
+      [userId]
+    );
+
+    res.json({
+      message: "通知已標記為已讀",
+      updatedCount: result.rowCount,
+    });
+  } catch (error) {
+    console.error("標記通知已讀失敗：", error);
+    res.status(500).json({
+      message: "標記通知已讀失敗",
+      error: error.message,
+    });
+  }
+});
+
+/**
  * 刪除通知
  * DELETE /api/notifications/:id
  */

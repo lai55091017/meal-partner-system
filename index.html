@@ -274,6 +274,7 @@
                   <option value="全部">全部餐期</option>
                   <option value="早餐">早餐</option>
                   <option value="午餐">午餐</option>
+                  <option value="下午茶">下午茶</option>
                   <option value="晚餐">晚餐</option>
                   <option value="宵夜">宵夜</option>
                 </select>
@@ -575,6 +576,14 @@
             </button>
             <button
               type="button"
+              class="party-detail-rate"
+              id="party-detail-rate-btn"
+              hidden
+            >
+              評價
+            </button>
+            <button
+              type="button"
               class="party-detail-delete-record"
               id="party-detail-delete-btn"
               hidden
@@ -867,27 +876,13 @@
               </p>
             </div>
             <div class="create-row">
-              <label class="create-label" for="create-time">時間</label>
-              <select
-                class="create-input create-select"
-                id="create-time"
-                name="time"
-              >
-                <option value="今天 08:00">今天 08:00</option>
-                <option value="今天 09:00">今天 09:00</option>
-                <option value="今天 10:00">今天 10:00</option>
-                <option value="今天 11:00">今天 11:00</option>
-                <option value="今天 12:00">今天 12:00</option>
-                <option value="今天 12:30">今天 12:30</option>
-                <option value="今天 13:00">今天 13:00</option>
-                <option value="今天 17:30">今天 17:30</option>
-                <option value="今天 18:00">今天 18:00</option>
-                <option value="今天 18:30" selected>今天 18:30</option>
-                <option value="今天 19:00">今天 19:00</option>
-                <option value="今天 20:00">今天 20:00</option>
-                <option value="今天 21:00">今天 21:00</option>
-                <option value="今天 22:00">今天 22:00</option>
-              </select>
+              <label class="create-label" for="create-date">日期</label>
+              <input
+                type="date"
+                class="create-input"
+                id="create-date"
+                name="partyDate"
+              />
             </div>
             <div class="create-row">
               <label class="create-label" for="create-meal-type">餐期</label>
@@ -898,9 +893,22 @@
               >
                 <option value="早餐">早餐</option>
                 <option value="午餐" selected>午餐</option>
+                <option value="下午茶">下午茶</option>
                 <option value="晚餐">晚餐</option>
                 <option value="宵夜">宵夜</option>
+                <option value="其他">其他</option>
               </select>
+            </div>
+            <div class="create-row">
+              <label class="create-label" for="create-time">時間</label>
+              <select
+                class="create-input create-select"
+                id="create-time"
+                name="time"
+              >
+                <option value="">請先選擇餐期</option>
+              </select>
+              <p class="create-file-hint">時間會依照餐期自動顯示，每 30 分鐘一個選項。</p>
             </div>
             <div class="create-row">
               <label class="create-label" for="create-max-members"
@@ -1345,6 +1353,7 @@
                     <th>ID</th>
                     <th>帳號 / 姓名</th>
                     <th>角色</th>
+                    <th>學生證審核</th>
                     <th>建立飯局</th>
                     <th>評分</th>
                     <th>操作</th>

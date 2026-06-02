@@ -52,7 +52,13 @@ router.post("/image", async (req, res) => {
       return res.status(400).json({ message: "圖片大小不能超過 4MB" });
     }
 
-    const folder = usage === "avatar" ? "avatars" : usage === "party" ? "parties" : "common";
+    const folder = usage === "avatar"
+      ? "avatars"
+      : usage === "party"
+        ? "parties"
+        : usage === "student-card"
+          ? "student-cards"
+          : "common";
     const targetDir = ensureUploadDir(folder);
     const safeName = `${Date.now()}-${Math.random().toString(16).slice(2)}.${parsed.extension}`;
     const filePath = path.join(targetDir, safeName);
