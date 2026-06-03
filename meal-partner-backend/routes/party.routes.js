@@ -30,18 +30,34 @@ function isAdminUserRow(user) {
 }
 
 function parsePartyTime(partyTime) {
-  const text = String(partyTime || "");
-  const match = text.match(/今天\s*(\d{1,2}):(\d{2})/);
-  if (!match) return null;
+  const text = String(partyTime || "").trim();
+  const dateTimeMatch = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})$/);
 
-  const time = new Date();
-  time.setHours(Number(match[1]), Number(match[2]), 0, 0);
-  return time;
+  if (dateTimeMatch) {
+    const [, year, month, day, hour, minute] = dateTimeMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), 0, 0);
+  }
+
+  const todayMatch = text.match(/今天\s*(\d{1,2}):(\d{2})/);
+  if (todayMatch) {
+    const time = new Date();
+    time.setHours(Number(todayMatch[1]), Number(todayMatch[2]), 0, 0);
+    return time;
+  }
+
+  return null;
 }
 
 function isPartyTimeEnded(partyTime) {
   const partyDateTime = parsePartyTime(partyTime);
   return Boolean(partyDateTime && Date.now() >= partyDateTime.getTime());
+}
+
+function validatePartyTimeForCreate(partyTime) {
+  const partyDateTime = parsePartyTime(partyTime);
+  if (!partyDateTime) return "飯局時間格式不正確，請重新選擇日期與時間";
+  if (partyDateTime.getTime() <= Date.now()) return "只能建立尚未到達時間點的飯局";
+  return "";
 }
 
 function normalizePartyStatusForResponse(party) {
@@ -285,6 +301,13 @@ router.post("/", async (req, res) => {
     if (!title || !hostId || !restaurantId || !mealType || !partyTime || !maxPeople) {
       return res.status(400).json({
         message: "請完整填寫飯局名稱、主辦人、餐廳、餐期、時間與人數上限",
+      });
+    }
+
+    const partyTimeError = validatePartyTimeForCreate(partyTime);
+    if (partyTimeError) {
+      return res.status(400).json({
+        message: partyTimeError,
       });
     }
 

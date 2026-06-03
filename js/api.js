@@ -25,10 +25,10 @@ const api = {
         });
     },
 
-    register(account, password, name) {
+    register(account, password, name, studentCardUrl = "") {
         return requestApi("/register", {
             method: "POST",
-            body: JSON.stringify({ account, password, name }),
+            body: JSON.stringify({ account, password, name, studentCardUrl }),
         });
     },
 
@@ -126,6 +126,13 @@ const api = {
     deleteNotification(notificationId, userId) {
         return requestApi(`/notifications/${notificationId}`, {
             method: "DELETE",
+            body: JSON.stringify({ userId }),
+        });
+    },
+
+    markNotificationsRead(userId) {
+        return requestApi(`/notifications/${userId}/read`, {
+            method: "PUT",
             body: JSON.stringify({ userId }),
         });
     },
@@ -234,6 +241,13 @@ const api = {
         return requestApi(`/admin/users/${targetUserId}`, {
             method: "DELETE",
             body: JSON.stringify({ userId }),
+        });
+    },
+
+    adminUpdateUserVerification(targetUserId, userId, status, note = "") {
+        return requestApi(`/admin/users/${targetUserId}/verification`, {
+            method: "PUT",
+            body: JSON.stringify({ userId, status, note }),
         });
     },
 

@@ -18,6 +18,68 @@ async function ensureRatingsTable() {
   `);
 }
 
+async function getUserForRegularAction(db, userId) {
+  const result = await db.query(
+    `
+    SELECT id, account, role
+    FROM users
+    WHERE id = $1
+    `,
+    [userId]
+  );
+
+  return result.rows[0] || null;
+}
+
+function isAdminUserRow(user) {
+  return user?.role === "admin" || user?.account === "admin";
+}
+
+function parsePartyEndTime(partyTime) {
+  const text = String(partyTime || "");
+  const dateTimeMatch = text.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*(\d{1,2}):(\d{2})/);
+
+  if (dateTimeMatch) {
+    const [, year, month, day, hour, minute] = dateTimeMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), 0, 0);
+  }
+
+  const todayMatch = text.match(/今天\s*(\d{1,2}):(\d{2})/);
+  if (todayMatch) {
+    const end = new Date();
+    end.setHours(Number(todayMatch[1]), Number(todayMatch[2]), 0, 0);
+    return end;
+  }
+
+  return null;
+}
+
+function isPartyEndedForRating(party) {
+  if (!party || party.status === "cancelled") return false;
+  if (party.status === "ended") return true;
+
+  const endTime = parsePartyEndTime(party.party_time);
+  return Boolean(endTime && Date.now() >= endTime.getTime());
+}
+
+async function markPartyEndedForRatingIfNeeded(client, party) {
+  if (!party || party.status !== "open" || !isPartyEndedForRating(party)) {
+    return party;
+  }
+
+  const result = await client.query(
+    `
+    UPDATE parties
+    SET status = 'ended'
+    WHERE id = $1 AND status = 'open'
+    RETURNING id, status, party_time
+    `,
+    [party.id]
+  );
+
+  return result.rows[0] || { ...party, status: "ended" };
+}
+
 ensureRatingsTable().catch((error) => {
   console.error("ratings 資料表建立失敗：", error);
 });
@@ -158,9 +220,10 @@ router.post("/", async (req, res) => {
 
     const partyResult = await client.query(
       `
-      SELECT id, status
+      SELECT id, status, party_time
       FROM parties
       WHERE id = $1
+      FOR UPDATE
       `,
       [partyId]
     );
@@ -170,9 +233,16 @@ router.post("/", async (req, res) => {
       return res.status(404).json({ message: "找不到飯局" });
     }
 
-    if (partyResult.rows[0].status === "cancelled") {
+    const party = await markPartyEndedForRatingIfNeeded(client, partyResult.rows[0]);
+
+    if (party.status === "cancelled") {
       await client.query("ROLLBACK");
       return res.status(400).json({ message: "已取消的飯局不能評價" });
+    }
+
+    if (!isPartyEndedForRating(party)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "飯局時間結束後才能上傳評價" });
     }
 
     const reviewerMember = await client.query(

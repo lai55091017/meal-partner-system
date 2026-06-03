@@ -89,6 +89,7 @@
     );
 
     const navItems = $$(".nav-item");
+    const notificationNavItem = document.querySelector('.nav-item[data-nav="notifications"]');
     const fab = $("#fab");
     const filterBtn = $("#filter-btn");
     const filterMenu = $("#filter-menu");
@@ -106,6 +107,9 @@
     const myPartyTabCount = $("#my-party-tab-count");
     const otherPartyTabCount = $("#other-party-tab-count");
     const createForm = $("#create-form");
+    const createDateInput = $("#create-date");
+    const createTimeSelect = $("#create-time");
+    const createMealTypeSelect = $("#create-meal-type");
     const signoutBtn = $("#profile-signout");
 
     const loginForm = $("#login-form");
@@ -117,6 +121,7 @@
     const registerName = $("#register-name");
     const registerPassword = $("#register-password");
     const registerPasswordConfirm = $("#register-password-confirm");
+    const registerStudentCard = $("#register-student-card");
     const registerMessage = $("#register-message");
     const loginTabBtn = $("#login-tab-btn");
     const registerTabBtn = $("#register-tab-btn");
@@ -162,6 +167,12 @@
     const profileStudentId = $("#profile-student-id");
     const profileDepartment = $("#profile-department");
     const profileBio = $("#profile-bio");
+    const dietCustomOptions = $("#diet-custom-options");
+    const cuisineCustomOptions = $("#cuisine-custom-options");
+    const dietCustomInput = $("#diet-custom-input");
+    const cuisineCustomInput = $("#cuisine-custom-input");
+    const dietAddBtn = $("#diet-add-btn");
+    const cuisineAddBtn = $("#cuisine-add-btn");
     const hostPreviewName = $("#host-preview-name");
     const hostPreviewDiet = $("#host-preview-diet");
     const hostPreviewBio = $("#host-preview-bio");
@@ -183,6 +194,10 @@
     const adminPartyList = $("#admin-party-list");
     const adminChatList = $("#admin-chat-list");
     const createRestaurantSelect = $("#create-restaurant");
+    const createRestaurantSearch = $("#create-restaurant-search");
+    const restaurantSelectCombo = $("#restaurant-select-combo");
+    const restaurantSelectToggle = $("#restaurant-select-toggle");
+    const restaurantSelectList = $("#restaurant-select-list");
     const createRestaurantInfo = $("#create-restaurant-info");
     const createRestaurantName = $("#create-restaurant-name");
     const createRestaurantCategory = $("#create-restaurant-category");
@@ -256,6 +271,11 @@
 
     // 正式版不再顯示範例飯局 / 範例聊天室；只顯示資料庫或使用者實際建立、加入的資料。
     const DEMO_PARTY_IDS = new Set(["default-my-party", "other-demo-party"]);
+
+    const DEFAULT_PREFERENCE_VALUES = {
+        diet: ["素食", "不吃辣", "可吃辣", "不吃牛"],
+        cuisine: ["中式", "日式", "速食", "咖啡廳"],
+    };
 
     function isDemoPartyId(partyId) {
         return DEMO_PARTY_IDS.has(String(partyId));
@@ -584,7 +604,10 @@
     function loadLocalNotifications() {
         try {
             const saved = localStorage.getItem(NOTIFICATIONS_KEY);
-            return saved ? JSON.parse(saved) : [];
+            return saved ? JSON.parse(saved).map((notice) => ({
+                ...notice,
+                isRead: notice.isRead === true,
+            })) : [];
         } catch (error) {
             localStorage.removeItem(NOTIFICATIONS_KEY);
             return [];
@@ -593,6 +616,47 @@
 
     function saveLocalNotifications(notifications) {
         localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications.slice(0, 50)));
+    }
+
+    function updateNotificationRedDot(notifications = []) {
+        if (!notificationNavItem) return;
+        const hasUnread = notifications.some((notice) => notice.isRead !== true);
+        notificationNavItem.classList.toggle("nav-item--has-unread", hasUnread);
+        notificationNavItem.setAttribute(
+            "aria-label",
+            hasUnread ? "通知，有未讀通知" : "通知"
+        );
+    }
+
+    async function refreshNotificationRedDot() {
+        const notifications = await loadNotifications();
+        updateNotificationRedDot(notifications);
+        return notifications;
+    }
+
+    async function markNotificationsAsRead() {
+        try {
+            if (currentUser?.id) {
+                await api.markNotificationsRead(currentUser.id);
+            } else {
+                const notifications = loadLocalNotifications().map((notice) => ({
+                    ...notice,
+                    isRead: true,
+                }));
+                saveLocalNotifications(notifications);
+            }
+        } catch (error) {
+            console.error("標記通知已讀失敗：", error);
+        }
+
+        updateNotificationRedDot([]);
+    }
+
+    async function openNotificationsView() {
+        await renderNotifications();
+        switchView("notifications");
+        await markNotificationsAsRead();
+        await renderNotifications();
     }
 
     function mapBackendNotification(notice) {
@@ -659,6 +723,7 @@
                     message,
                     partyId,
                     createdAt,
+                    isRead: false,
                 });
                 saveLocalNotifications(notifications);
             }
@@ -683,6 +748,122 @@
 
 
     /* ======================================================
+     * 建立飯局日期與餐期時間選項
+     * ====================================================== */
+    const MEAL_TIME_OPTIONS = {
+        早餐: buildHalfHourOptions("07:00", "10:30"),
+        午餐: buildHalfHourOptions("11:00", "14:00"),
+        下午茶: buildHalfHourOptions("14:00", "17:00"),
+        晚餐: buildHalfHourOptions("17:00", "21:00"),
+        宵夜: [...buildHalfHourOptions("21:00", "23:30"), ...buildHalfHourOptions("00:00", "02:00")],
+        其他: buildHalfHourOptions("00:00", "23:30"),
+    };
+
+    function timeToMinutes(timeText) {
+        const [hour, minute] = String(timeText).split(":").map(Number);
+        return hour * 60 + minute;
+    }
+
+    function minutesToTime(totalMinutes) {
+        const hour = Math.floor(totalMinutes / 60).toString().padStart(2, "0");
+        const minute = (totalMinutes % 60).toString().padStart(2, "0");
+        return `${hour}:${minute}`;
+    }
+
+    function buildHalfHourOptions(start, end) {
+        const options = [];
+        const startMinutes = timeToMinutes(start);
+        const endMinutes = timeToMinutes(end);
+        for (let current = startMinutes; current <= endMinutes; current += 30) {
+            options.push(minutesToTime(current));
+        }
+        return options;
+    }
+
+    function getTodayDateValue() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    function formatDateLabel(dateValue) {
+        const match = String(dateValue || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return "";
+        return `${match[1]}/${match[2]}/${match[3]}`;
+    }
+
+    function getCreatePartyDateTime() {
+        const dateValue = createDateInput?.value || "";
+        const timeValue = createTimeSelect?.value || "";
+        const match = String(dateValue).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match || !timeValue) return null;
+
+        const [hour, minute] = String(timeValue).split(":").map(Number);
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), hour, minute, 0, 0);
+    }
+
+    function isCreatePartyDateTimeFuture() {
+        const partyDateTime = getCreatePartyDateTime();
+        return Boolean(partyDateTime && partyDateTime.getTime() > Date.now());
+    }
+
+    function getCreatePartyTimeValue() {
+        const dateValue = createDateInput?.value || "";
+        const timeValue = createTimeSelect?.value || "";
+        const dateLabel = formatDateLabel(dateValue);
+        if (!dateLabel || !timeValue) return "";
+        return `${dateLabel} ${timeValue}`;
+    }
+
+    function updateCreateTimeOptions(preferredTime = "") {
+        if (!createTimeSelect) return;
+
+        const mealType = createMealTypeSelect?.value || "午餐";
+        const options = MEAL_TIME_OPTIONS[mealType] || MEAL_TIME_OPTIONS["其他"];
+        const selectedDate = createDateInput?.value || getTodayDateValue();
+        const today = getTodayDateValue();
+        const now = new Date();
+        const availableOptions = selectedDate === today
+            ? options.filter((time) => {
+                const [hour, minute] = time.split(":").map(Number);
+                const optionDateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
+                return optionDateTime.getTime() > now.getTime();
+            })
+            : options;
+
+        if (availableOptions.length === 0) {
+            createTimeSelect.innerHTML = '<option value="">今日此餐期已無可建立時間</option>';
+            createTimeSelect.disabled = true;
+            return;
+        }
+
+        createTimeSelect.disabled = false;
+
+        const fallbackTime = preferredTime && availableOptions.includes(preferredTime)
+            ? preferredTime
+            : availableOptions.includes("18:30")
+                ? "18:30"
+                : availableOptions[0] || "";
+
+        createTimeSelect.innerHTML = availableOptions.map((time) => (
+            `<option value="${time}"${time === fallbackTime ? " selected" : ""}>${time}</option>`
+        )).join("");
+    }
+
+    function initCreateScheduleFields() {
+        const today = getTodayDateValue();
+        if (createDateInput) {
+            createDateInput.min = today;
+            if (!createDateInput.value || createDateInput.value < today) createDateInput.value = today;
+        }
+        updateCreateTimeOptions(createTimeSelect?.value || "");
+    }
+
+    /* ======================================================
      * 評價資料功能
      * ====================================================== */
     function loadRatings() {
@@ -701,12 +882,20 @@
 
     function parsePartyEndTime(party) {
         const text = String(party?.time || "");
-        const match = text.match(/今天\s*(\d{1,2}):(\d{2})/);
-        if (!match) return null;
+        const dateTimeMatch = text.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*(\d{1,2}):(\d{2})/);
+        if (dateTimeMatch) {
+            const [, year, month, day, hour, minute] = dateTimeMatch;
+            return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), 0, 0);
+        }
 
-        const end = new Date();
-        end.setHours(Number(match[1]), Number(match[2]), 0, 0);
-        return end;
+        const todayMatch = text.match(/今天\s*(\d{1,2}):(\d{2})/);
+        if (todayMatch) {
+            const end = new Date();
+            end.setHours(Number(todayMatch[1]), Number(todayMatch[2]), 0, 0);
+            return end;
+        }
+
+        return null;
     }
 
     function isPartyEnded(party) {
@@ -719,7 +908,7 @@
 
     function getPartyEndHint(party) {
         const endTime = parsePartyEndTime(party);
-        if (!endTime) return "此飯局時間格式無法判斷，請使用『今天 HH:mm』的時間選項。";
+        if (!endTime) return "此飯局時間格式無法判斷，請確認飯局日期與時間。";
         return `飯局約在 ${formatMessageTime(endTime.toISOString())} 後才能評價。`;
     }
 
@@ -880,6 +1069,7 @@
         if (!notificationList) return;
 
         const notifications = await loadNotifications();
+        updateNotificationRedDot(notifications);
         notificationList.innerHTML = "";
 
         if (notificationEmpty) notificationEmpty.hidden = notifications.length > 0;
@@ -929,14 +1119,167 @@
         });
     }
 
-    function setCheckedValues(name, values) {
+    function normalizePreferenceValue(value) {
+        return String(value || "").trim();
+    }
+
+    function getPreferenceCustomContainer(name) {
+        return name === "diet" ? dietCustomOptions : cuisineCustomOptions;
+    }
+
+    function getPreferenceAddInput(name) {
+        return name === "diet" ? dietCustomInput : cuisineCustomInput;
+    }
+
+    function createPreferenceChip(name, value, options = {}) {
+        const normalizedValue = normalizePreferenceValue(value);
+        if (!normalizedValue) return null;
+
+        const { isCustom = false, checked = false } = options;
+        const label = document.createElement("label");
+        label.className = `preference-chip${isCustom ? " preference-chip--custom" : ""}`;
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.name = name;
+        input.value = normalizedValue;
+        input.checked = checked;
+        input.disabled = !profileForm?.classList.contains("profile-form--editing");
+
+        const text = document.createElement("span");
+        text.textContent = normalizedValue;
+
+        label.append(input, text);
+
+        if (isCustom) {
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "preference-chip-remove";
+            removeBtn.textContent = "×";
+            removeBtn.setAttribute("aria-label", `移除 ${normalizedValue}`);
+            removeBtn.disabled = input.disabled;
+            removeBtn.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                label.remove();
+                updatePreferenceEditState(profileForm?.classList.contains("profile-form--editing"));
+                updateHostPreview(collectProfileData());
+            });
+            label.appendChild(removeBtn);
+        }
+
+        input.addEventListener("change", () => {
+            updatePreferenceEditState(profileForm?.classList.contains("profile-form--editing"));
+            updateHostPreview(collectProfileData());
+        });
+
+        return label;
+    }
+
+    function renderCustomPreferenceValues(name, values = []) {
+        const container = getPreferenceCustomContainer(name);
+        if (!container) return;
+
+        container.innerHTML = "";
+
+        const defaults = new Set(DEFAULT_PREFERENCE_VALUES[name] || []);
+        const uniqueCustomValues = Array.from(new Set(
+            values
+                .map(normalizePreferenceValue)
+                .filter((value) => value && !defaults.has(value))
+        ));
+
+        uniqueCustomValues.forEach((value) => {
+            const chip = createPreferenceChip(name, value, { isCustom: true, checked: true });
+            if (chip) container.appendChild(chip);
+        });
+    }
+
+    function setPreferenceValues(name, values) {
+        const normalizedValues = values.map(normalizePreferenceValue).filter(Boolean);
+        renderCustomPreferenceValues(name, normalizedValues);
+
         $$(`input[name="${name}"]`, profileForm).forEach((input) => {
-            input.checked = values.includes(input.value);
+            input.checked = normalizedValues.includes(input.value);
+        });
+
+        updatePreferenceViewVisibility(profileForm?.classList.contains("profile-form--editing"));
+    }
+
+    function updatePreferenceViewVisibility(isEditing = false) {
+        $$(".preference-chip", profileForm).forEach((chip) => {
+            const input = chip.querySelector('input[type="checkbox"]');
+            if (!input) return;
+
+            const shouldHide = !isEditing && !input.checked;
+            chip.hidden = shouldHide;
         });
     }
 
     function getCheckedValues(name) {
-        return $$(`input[name="${name}"]:checked`, profileForm).map((input) => input.value);
+        return Array.from(new Set(
+            $$(`input[name="${name}"]:checked`, profileForm)
+                .map((input) => normalizePreferenceValue(input.value))
+                .filter(Boolean)
+        ));
+    }
+
+    function updatePreferenceEditState(isEditing) {
+        $$('input[type="checkbox"]', profileForm).forEach((input) => {
+            input.disabled = !isEditing;
+        });
+
+        [dietCustomInput, cuisineCustomInput, dietAddBtn, cuisineAddBtn].forEach((element) => {
+            if (!element) return;
+            element.disabled = !isEditing;
+        });
+
+        $$(".preference-chip-remove", profileForm).forEach((button) => {
+            button.disabled = !isEditing;
+        });
+
+        $$(".preference-group", profileForm).forEach((group) => {
+            group.classList.toggle("preference-group--editing", isEditing);
+        });
+
+        updatePreferenceViewVisibility(isEditing);
+        updatePreferenceEmptyState();
+    }
+
+    function updatePreferenceEmptyState() {
+        $$(".preference-group", profileForm).forEach((group) => {
+            const visibleCheckedChips = $$(".preference-chip", group).filter((chip) => {
+                const input = chip.querySelector('input[type="checkbox"]');
+                return input?.checked && chip.hidden !== true;
+            });
+
+            group.classList.toggle("preference-group--empty-view", !group.classList.contains("preference-group--editing") && visibleCheckedChips.length === 0);
+        });
+    }
+
+    function addCustomPreference(name) {
+        const input = getPreferenceAddInput(name);
+        if (!input || input.disabled) return;
+
+        const value = normalizePreferenceValue(input.value);
+        if (!value) return;
+
+        const existingInput = $$(`input[name="${name}"]`, profileForm).find((item) => item.value === value);
+        if (existingInput) {
+            existingInput.checked = true;
+            input.value = "";
+            updateHostPreview(collectProfileData());
+            return;
+        }
+
+        const container = getPreferenceCustomContainer(name);
+        const chip = createPreferenceChip(name, value, { isCustom: true, checked: true });
+        if (container && chip) {
+            container.appendChild(chip);
+            input.value = "";
+            updatePreferenceEditState(true);
+            updateHostPreview(collectProfileData());
+        }
     }
 
     function fileToDataUrl(file) {
@@ -1032,8 +1375,9 @@
         if (profileDepartment) profileDepartment.value = profile.department;
         if (profileBio) profileBio.value = profile.bio;
 
-        setCheckedValues("diet", profile.diet || []);
-        setCheckedValues("cuisine", profile.cuisine || []);
+        setPreferenceValues("diet", profile.diet || []);
+        setPreferenceValues("cuisine", profile.cuisine || []);
+        updatePreferenceEditState(profileForm?.classList.contains("profile-form--editing"));
 
         if (profileAvatarPreview && profileAvatarIcon) {
             const avatarPreviewUrl = pendingProfileAvatarPreview || getImageUrl(profile.avatar);
@@ -1074,9 +1418,7 @@
             field.readOnly = !isEditing;
         });
 
-        $$('input[type="checkbox"]', profileForm).forEach((input) => {
-            input.disabled = !isEditing;
-        });
+        updatePreferenceEditState(isEditing);
 
         if (profileAvatarFile) profileAvatarFile.disabled = !isEditing;
         if (profileEditBtn) profileEditBtn.hidden = isEditing;
@@ -1197,31 +1539,29 @@
         }
     }
 
-    async function registerNewAccount(account, password, name) {
+    async function registerNewAccount(account, password, name, studentCardFile) {
         try {
-            if (registerMessage) registerMessage.textContent = "註冊中...";
+            if (registerMessage) registerMessage.textContent = "上傳學生證中...";
             if (registerTabBtn) registerTabBtn.disabled = true;
 
-            const result = await api.register(account, password, name);
+            const fileError = validateImageFile(studentCardFile);
+            if (fileError) {
+                if (registerMessage) registerMessage.textContent = fileError;
+                return;
+            }
 
-            currentUser = result.user;
-            localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser));
-            updateAdminNavVisibility();
+            const studentCardUrl = await uploadImageFile(studentCardFile, "student-card");
 
-            const profile = mapBackendProfileToFrontend(currentUser, []);
-            saveProfileData(profile);
+            if (registerMessage) registerMessage.textContent = "送出審核中...";
+
+            await api.register(account, password, name, studentCardUrl);
 
             if (registerForm) registerForm.reset();
             if (loginForm) loginForm.reset();
+            if (loginMessage) loginMessage.textContent = "註冊申請已送出，請等待管理員審核學生證後再登入。";
             if (registerMessage) registerMessage.textContent = "";
-            if (loginMessage) loginMessage.textContent = "";
 
-            await loadProfileFromBackend({ silent: true });
-            setProfileEditMode(false);
-            await loadBackendParties();
-            renderChatRoomList();
-            switchView(isAdminUser() ? "admin" : "profile");
-            if (isAdminUser()) loadAdminDashboard();
+            showAuthMode("login");
         } catch (error) {
             console.error("註冊失敗：", error);
 
@@ -1332,6 +1672,7 @@
         updateAdminNavVisibility();
 
         if (safeViewKey === "create") {
+            initCreateScheduleFields();
             loadRestaurants();
         }
 
@@ -1362,12 +1703,13 @@
 
     function inferMealType(party) {
         const explicit = party.mealType || party.meal || party.category;
-        const validTypes = ["早餐", "午餐", "晚餐", "宵夜"];
+        const validTypes = ["早餐", "午餐", "下午茶", "晚餐", "宵夜", "其他"];
         if (validTypes.includes(explicit)) return explicit;
 
         const text = `${party.partyName || ""} ${party.time || ""} ${party.description || ""}`;
         if (/早餐|早上|上午|早午餐/.test(text)) return "早餐";
         if (/午餐|中午|午間/.test(text)) return "午餐";
+        if (/下午茶|點心|下午/.test(text)) return "下午茶";
         if (/晚餐|晚上|晚間|傍晚/.test(text)) return "晚餐";
         if (/宵夜|夜宵|凌晨/.test(text)) return "宵夜";
         return "午餐";
@@ -1394,6 +1736,126 @@
         const selectedId = createRestaurantSelect?.value || "";
         if (selectedId === CUSTOM_RESTAURANT_VALUE) return null;
         return restaurantOptions.find((restaurant) => String(restaurant.id) === String(selectedId)) || null;
+    }
+
+    function getRestaurantOptionLabel(restaurant) {
+        return `${restaurant.name}｜${restaurant.category}｜${restaurant.priceLevel}`;
+    }
+
+    function getRestaurantSearchText() {
+        return createRestaurantSearch?.value.trim().toLowerCase() || "";
+    }
+
+    function getFilteredRestaurantOptions() {
+        const keyword = getRestaurantSearchText();
+        if (!keyword) return restaurantOptions;
+
+        return restaurantOptions.filter((restaurant) => {
+            const searchableText = [
+                restaurant.name,
+                restaurant.category,
+                restaurant.priceLevel,
+                restaurant.openingHours,
+                restaurant.address,
+                restaurant.feature,
+            ].join(" ").toLowerCase();
+
+            return searchableText.includes(keyword);
+        });
+    }
+
+    function setRestaurantDropdownOpen(isOpen) {
+        if (!restaurantSelectList || !createRestaurantSearch) return;
+
+        restaurantSelectList.hidden = !isOpen;
+        createRestaurantSearch.setAttribute("aria-expanded", String(isOpen));
+        restaurantSelectCombo?.classList.toggle("restaurant-select-combo--open", isOpen);
+
+        if (isOpen) renderRestaurantSelectList();
+    }
+
+    function renderRestaurantSelectList() {
+        if (!restaurantSelectList) return;
+
+        const filteredRestaurants = getFilteredRestaurantOptions();
+        restaurantSelectList.innerHTML = "";
+
+        if (!filteredRestaurants.length) {
+            const emptyItem = document.createElement("li");
+            emptyItem.className = "restaurant-select-empty";
+            emptyItem.textContent = getRestaurantSearchText()
+                ? "找不到符合的餐廳"
+                : "目前沒有餐廳資料";
+            restaurantSelectList.appendChild(emptyItem);
+        } else {
+            filteredRestaurants.forEach((restaurant) => {
+                const item = document.createElement("li");
+                item.className = "restaurant-select-option";
+                item.setAttribute("role", "option");
+                item.dataset.restaurantId = String(restaurant.id);
+                item.textContent = getRestaurantOptionLabel(restaurant);
+
+                if (createRestaurantSelect?.value === String(restaurant.id)) {
+                    item.classList.add("restaurant-select-option--active");
+                    item.setAttribute("aria-selected", "true");
+                }
+
+                item.addEventListener("mousedown", (event) => {
+                    event.preventDefault();
+                    selectRestaurantById(restaurant.id);
+                });
+
+                restaurantSelectList.appendChild(item);
+            });
+        }
+
+        const customItem = document.createElement("li");
+        customItem.className = "restaurant-select-option restaurant-select-option--custom";
+        customItem.setAttribute("role", "option");
+        customItem.dataset.restaurantId = CUSTOM_RESTAURANT_VALUE;
+        customItem.textContent = "＋ 新增其他餐廳";
+        customItem.addEventListener("mousedown", (event) => {
+            event.preventDefault();
+            setCustomRestaurantMode(true);
+            setRestaurantDropdownOpen(false);
+        });
+        restaurantSelectList.appendChild(customItem);
+    }
+
+    function selectRestaurantById(restaurantId) {
+        if (!createRestaurantSelect) return;
+
+        createRestaurantSelect.value = String(restaurantId || "");
+        const restaurant = getSelectedRestaurant();
+
+        if (createRestaurantSearch) {
+            createRestaurantSearch.value = restaurant ? getRestaurantOptionLabel(restaurant) : "";
+        }
+
+        updateSelectedRestaurantInfo();
+        setRestaurantDropdownOpen(false);
+    }
+
+    function syncRestaurantSelectFromInput() {
+        if (!createRestaurantSelect || !createRestaurantSearch) return false;
+
+        const value = createRestaurantSearch.value.trim();
+        const matchedRestaurant = restaurantOptions.find((restaurant) => (
+            restaurant.name === value ||
+            getRestaurantOptionLabel(restaurant) === value
+        ));
+
+        if (matchedRestaurant) {
+            selectRestaurantById(matchedRestaurant.id);
+            return true;
+        }
+
+        if (!value) {
+            createRestaurantSelect.value = "";
+            updateSelectedRestaurantInfo();
+        }
+
+        return false;
     }
 
     function getCustomRestaurantData() {
@@ -1435,7 +1897,7 @@
         restaurantOptions.forEach((restaurant) => {
             const option = document.createElement("option");
             option.value = String(restaurant.id);
-            option.textContent = `${restaurant.name}｜${restaurant.category}｜${restaurant.priceLevel}`;
+            option.textContent = getRestaurantOptionLabel(restaurant);
             createRestaurantSelect.appendChild(option);
         });
 
@@ -1446,8 +1908,16 @@
 
         if (currentValue === CUSTOM_RESTAURANT_VALUE || (currentValue && restaurantOptions.some((restaurant) => String(restaurant.id) === String(currentValue)))) {
             createRestaurantSelect.value = currentValue;
+        } else {
+            createRestaurantSelect.value = "";
         }
 
+        const selectedRestaurant = getSelectedRestaurant();
+        if (createRestaurantSearch && selectedRestaurant) {
+            createRestaurantSearch.value = getRestaurantOptionLabel(selectedRestaurant);
+        }
+
+        renderRestaurantSelectList();
         updateSelectedRestaurantInfo();
         updateRestaurantFilterOptions();
     }
@@ -1501,6 +1971,9 @@
         const storeInput = $("#create-store");
 
         if (storeInput) storeInput.value = restaurant?.name || "";
+        if (createRestaurantSearch && restaurant && document.activeElement !== createRestaurantSearch) {
+            createRestaurantSearch.value = getRestaurantOptionLabel(restaurant);
+        }
         if (createNewRestaurantToggle) {
             createNewRestaurantToggle.textContent = customMode ? "取消新增餐廳" : "＋ 新增其他餐廳";
         }
@@ -1717,8 +2190,8 @@
             restaurantOpeningHours: selectedRestaurant?.openingHours || customRestaurant?.openingHours || "",
             restaurantAddress: selectedRestaurant?.address || customRestaurant?.address || "",
             restaurantFeature: selectedRestaurant?.feature || customRestaurant?.feature || "",
-            time: $("#create-time")?.value.trim() || "時間",
-            mealType: $("#create-meal-type")?.value || "午餐",
+            time: getCreatePartyTimeValue() || "時間",
+            mealType: createMealTypeSelect?.value || "午餐",
             maxMembers: $("#create-max-members")?.value.trim() || 4,
             description: $("#create-description")?.value.trim() || "尚未填寫飯局介紹。",
             imageUrl: "",
@@ -1739,8 +2212,8 @@
             restaurantId: selectedRestaurant?.id || "",
             customRestaurant,
             store: selectedRestaurant?.name || customRestaurant?.name || "",
-            mealType: $("#create-meal-type")?.value || "午餐",
-            partyTime: $("#create-time")?.value || "",
+            mealType: createMealTypeSelect?.value || "午餐",
+            partyTime: getCreatePartyTimeValue(),
             maxPeople: Number($("#create-max-members")?.value || 0),
             description: $("#create-description")?.value.trim() || "",
             imageUrl: "",
@@ -1759,7 +2232,9 @@
             if (!partyData.customRestaurant.address) return "請輸入新增餐廳地址";
         }
         if (!partyData.mealType) return "請選擇餐期";
+        if (!createDateInput?.value) return "請選擇日期";
         if (!partyData.partyTime) return "請選擇時間";
+        if (!isCreatePartyDateTimeFuture()) return "只能建立尚未到達時間點的飯局";
         if (!partyData.maxPeople || partyData.maxPeople < 2) return "人數上限至少需要 2 人";
 
         return "";
@@ -2299,9 +2774,15 @@
             const reviewed = hasReviewedParty(party.id);
             const canRate = canCurrentUserRateParty(party);
             const hasTargets = getRatingTargets(party).length > 0;
-            partyRateBtn.disabled = status.key === "canceled" || !ended || reviewed || !canRate || !hasTargets;
-            partyRateBtn.textContent = reviewed ? "已評價" : ended ? "評價" : "尚未結束";
-            partyRateBtn.title = !canRate ? "只有本場飯局成員可以評價" : reviewed ? "同一場飯局只能評價一次" : ended ? "可以評價本場飯局成員" : getPartyEndHint(party);
+            partyRateBtn.disabled = status.key === "canceled" || reviewed || !canRate || !hasTargets;
+            partyRateBtn.textContent = reviewed ? "已評價" : "評價";
+            partyRateBtn.title = !canRate
+                ? "只有本場飯局成員可以評價"
+                : reviewed
+                    ? "同一場飯局只能評價一次"
+                    : ended
+                        ? "可以評價並送出本場飯局成員評價"
+                        : "可以先進入評價頁填寫，飯局結束後才能上傳";
         }
     }
 
@@ -3833,6 +4314,18 @@
     }
 
 
+    function getAdminPartyStatusText(status) {
+        const labels = {
+            open: "招募中",
+            ended: "已結束",
+            cancelled: "已取消",
+            canceled: "已取消",
+        };
+
+        return labels[status] || status || "-";
+    }
+
+
     function getRestaurantFormData() {
         return {
             name: adminRestaurantName?.value.trim() || "",
@@ -3915,13 +4408,27 @@
         });
     }
 
+    function getVerificationStatusLabel(status) {
+        const labels = {
+            pending: "待審核",
+            approved: "已通過",
+            rejected: "已退回",
+        };
+
+        return labels[status] || "未設定";
+    }
+
+    function getStudentCardUrl(url) {
+        return getImageUrl(url);
+    }
+
     function renderAdminUsers(users = []) {
         if (!adminUserList) return;
         adminUserList.innerHTML = "";
 
         if (!users.length) {
             const row = document.createElement("tr");
-            row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有使用者資料。</td>`;
+            row.innerHTML = `<td colspan="7" class="admin-empty-cell">目前沒有使用者資料。</td>`;
             adminUserList.appendChild(row);
             return;
         }
@@ -3930,6 +4437,9 @@
             const row = document.createElement("tr");
             const ratingText = user.average_rating == null ? "尚無" : `${Number(user.average_rating).toFixed(1)} / 5`;
             const isSelf = String(user.id) === String(currentUser?.id);
+            const verifyStatus = user.verify_status || "approved";
+            const studentCardUrl = getStudentCardUrl(user.student_card_url || "");
+            const verifyClass = `admin-verify-badge admin-verify-badge--${verifyStatus}`;
 
             row.innerHTML = `
                 <td>${user.id}</td>
@@ -3938,15 +4448,47 @@
                     <span class="admin-muted">${user.account || ""}</span>
                 </td>
                 <td>${user.role === "admin" ? "管理員" : "一般"}</td>
+                <td>
+                    <span class="${verifyClass}">${getVerificationStatusLabel(verifyStatus)}</span>
+                    ${studentCardUrl ? `<br /><a class="admin-student-card-link" href="${studentCardUrl}" target="_blank" rel="noopener">查看學生證</a>` : `<br /><span class="admin-muted">未上傳學生證</span>`}
+                    ${user.student_card_review_note ? `<br /><span class="admin-muted">備註：${user.student_card_review_note}</span>` : ""}
+                </td>
                 <td>${user.hosted_count || 0}</td>
                 <td>${ratingText}</td>
                 <td></td>
             `;
 
             const actionCell = row.querySelector("td:last-child");
+
+            if (user.role !== "admin") {
+                const approveBtn = document.createElement("button");
+                approveBtn.type = "button";
+                approveBtn.className = "admin-small-btn admin-approve-btn";
+                approveBtn.textContent = "通過";
+                approveBtn.disabled = verifyStatus === "approved";
+                approveBtn.addEventListener("click", async () => {
+                    await api.adminUpdateUserVerification(user.id, currentUser.id, "approved");
+                    await loadAdminDashboard();
+                });
+
+                const rejectBtn = document.createElement("button");
+                rejectBtn.type = "button";
+                rejectBtn.className = "admin-danger-btn admin-small-btn";
+                rejectBtn.textContent = "退回";
+                rejectBtn.disabled = verifyStatus === "rejected";
+                rejectBtn.addEventListener("click", async () => {
+                    const note = prompt("請輸入退回原因，可留空：", user.student_card_review_note || "");
+                    if (note === null) return;
+                    await api.adminUpdateUserVerification(user.id, currentUser.id, "rejected", note);
+                    await loadAdminDashboard();
+                });
+
+                actionCell.append(approveBtn, rejectBtn);
+            }
+
             const deleteBtn = document.createElement("button");
             deleteBtn.type = "button";
-            deleteBtn.className = "admin-danger-btn";
+            deleteBtn.className = "admin-danger-btn admin-small-btn";
             deleteBtn.textContent = isSelf ? "自己" : "刪除";
             deleteBtn.disabled = isSelf;
             deleteBtn.addEventListener("click", async () => {
@@ -3957,15 +4499,6 @@
             actionCell.appendChild(deleteBtn);
             adminUserList.appendChild(row);
         });
-    }
-
-    function getAdminPartyStatusText(status) {
-        const labels = {
-            open: "招募中",
-            ended: "已結束",
-            cancelled: "已取消",
-        };
-        return labels[status] || status || "未知";
     }
 
     function renderAdminParties(parties = []) {
@@ -4356,10 +4889,7 @@
 
         if (ratingPartyTitle) ratingPartyTitle.textContent = `評價「${party.partyName}」`;
 
-        if (!isPartyEnded(party)) {
-            ratingMessage.textContent = getPartyEndHint(party);
-            ratingSubmitBtn.disabled = true;
-        } else if (!canRate) {
+        if (!canRate) {
             ratingMessage.textContent = "只有本場飯局成員可以評價。";
             ratingSubmitBtn.disabled = true;
         } else if (reviewed) {
@@ -4367,6 +4897,9 @@
             ratingSubmitBtn.disabled = true;
         } else if (!targets.length) {
             ratingMessage.textContent = "目前沒有其他成員可以評價。";
+            ratingSubmitBtn.disabled = true;
+        } else if (!isPartyEnded(party)) {
+            ratingMessage.textContent = `可以先填寫評分與留言；${getPartyEndHint(party)}，飯局結束後才能上傳。`;
             ratingSubmitBtn.disabled = true;
         } else {
             ratingMessage.textContent = "請對本場飯局成員給予星等與留言。";
@@ -4546,11 +5079,6 @@
             return;
         }
 
-        if (!isPartyEnded(party)) {
-            alert("飯局結束後才能評價。" + getPartyEndHint(party));
-            return;
-        }
-
         const reviewed = await refreshRatingReviewedCache(party.id);
         if (reviewed) {
             alert("你已經評價過這場飯局，同一場飯局只能評價一次。 ");
@@ -4588,8 +5116,7 @@
                 }
 
                 if (navKey === "notifications") {
-                    renderNotifications();
-                    switchView("notifications");
+                    openNotificationsView();
                     return;
                 }
 
@@ -4626,6 +5153,31 @@
         });
 
         adminRefreshBtn?.addEventListener("click", loadAdminDashboard);
+        createRestaurantSearch?.addEventListener("focus", () => setRestaurantDropdownOpen(true));
+        createRestaurantSearch?.addEventListener("click", () => setRestaurantDropdownOpen(true));
+        createRestaurantSearch?.addEventListener("input", () => {
+            createRestaurantSelect.value = "";
+            renderRestaurantSelectList();
+            setRestaurantDropdownOpen(true);
+            updateSelectedRestaurantInfo();
+        });
+        createRestaurantSearch?.addEventListener("change", syncRestaurantSelectFromInput);
+        createRestaurantSearch?.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") setRestaurantDropdownOpen(false);
+            if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setRestaurantDropdownOpen(true);
+            }
+        });
+        restaurantSelectToggle?.addEventListener("click", () => {
+            setRestaurantDropdownOpen(restaurantSelectList?.hidden !== false);
+            createRestaurantSearch?.focus();
+        });
+        document.addEventListener("click", (event) => {
+            if (!restaurantSelectCombo?.contains(event.target)) {
+                setRestaurantDropdownOpen(false);
+            }
+        });
         createRestaurantSelect?.addEventListener("change", updateSelectedRestaurantInfo);
         createNewRestaurantToggle?.addEventListener("click", () => {
             setCustomRestaurantMode(!isCustomRestaurantMode());
@@ -4680,6 +5232,9 @@
             });
         });
 
+        createMealTypeSelect?.addEventListener("change", () => updateCreateTimeOptions(createTimeSelect?.value || ""));
+        createDateInput?.addEventListener("change", () => updateCreateTimeOptions(createTimeSelect?.value || ""));
+
         searchInput?.addEventListener("input", renderHomeParties);
         mealTypeFilter?.addEventListener("change", renderHomeParties);
         restaurantCategoryFilter?.addEventListener("change", renderHomeParties);
@@ -4715,9 +5270,21 @@
             const name = registerName?.value.trim();
             const password = registerPassword?.value.trim();
             const passwordConfirm = registerPasswordConfirm?.value.trim();
+            const studentCardFile = registerStudentCard?.files?.[0] || null;
 
             if (!account || !name || !password || !passwordConfirm) {
                 if (registerMessage) registerMessage.textContent = "請完整填寫帳號、姓名與密碼";
+                return;
+            }
+
+            if (!studentCardFile) {
+                if (registerMessage) registerMessage.textContent = "請上傳學生證照片，等待管理員審核";
+                return;
+            }
+
+            const studentCardError = validateImageFile(studentCardFile);
+            if (studentCardError) {
+                if (registerMessage) registerMessage.textContent = studentCardError;
                 return;
             }
 
@@ -4731,7 +5298,7 @@
                 return;
             }
 
-            registerNewAccount(account, password, name);
+            registerNewAccount(account, password, name, studentCardFile);
         });
 
         bindPartyCard(otherPartyCard, { allowJoin: true });
@@ -4861,8 +5428,7 @@
                         restaurantOptions.push(createdRestaurant);
                     }
                     renderRestaurantSelect();
-                    if (createRestaurantSelect) createRestaurantSelect.value = createdRestaurant.id;
-                    updateSelectedRestaurantInfo();
+                    selectRestaurantById(createdRestaurant.id);
                 }
 
                 const coverFile = createCoverFile?.files?.[0];
@@ -4880,6 +5446,9 @@
                 );
 
                 createForm.reset();
+                if (createRestaurantSearch) createRestaurantSearch.value = "";
+                renderRestaurantSelect();
+                initCreateScheduleFields();
                 resetCustomRestaurantForm();
                 updateSelectedRestaurantInfo();
 
@@ -4901,6 +5470,23 @@
         profileSaveBtn?.addEventListener("click", saveProfileToBackend);
 
         profileForm?.addEventListener("submit", saveProfileToBackend);
+
+        dietAddBtn?.addEventListener("click", () => addCustomPreference("diet"));
+        cuisineAddBtn?.addEventListener("click", () => addCustomPreference("cuisine"));
+
+        dietCustomInput?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addCustomPreference("diet");
+            }
+        });
+
+        cuisineCustomInput?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addCustomPreference("cuisine");
+            }
+        });
 
         profileAvatarFile?.addEventListener("change", async (event) => {
             event?.preventDefault?.();
@@ -5003,6 +5589,11 @@
         renderChatRoomList();
         renderNotifications();
         loadRestaurants();
+
+        // 定期更新通知紅點，讓其他使用者或後台產生的新通知也能被提醒。
+        if (!isAdminUser()) {
+            setInterval(refreshNotificationRedDot, 30000);
+        }
 
         if (isAdminUser()) {
             switchView("admin");

@@ -5,7 +5,13 @@ const router = express.Router();
 
 async function ensureAdminRoleColumn() {
   await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_status VARCHAR(20) DEFAULT 'approved'");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS student_card_url TEXT DEFAULT ''");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS student_card_review_note TEXT DEFAULT ''");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS student_card_reviewed_at TIMESTAMP");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS student_card_reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL");
   await pool.query("UPDATE users SET role = 'admin' WHERE account = 'admin'");
+  await pool.query("UPDATE users SET verify_status = 'approved' WHERE verify_status IS NULL OR account = 'admin'");
 }
 
 
@@ -62,6 +68,108 @@ async function ensureReportsTable() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_once_per_target
     ON reports (reporter_id, target_type, target_id, COALESCE(party_id, 0))
   `);
+}
+
+async function ensureNotificationsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type VARCHAR(50) NOT NULL DEFAULT 'system',
+      title VARCHAR(100) NOT NULL,
+      message TEXT NOT NULL,
+      party_id INTEGER REFERENCES parties(id) ON DELETE SET NULL,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+async function getReportWarningTarget(reportId) {
+  const result = await pool.query(
+    `
+    SELECT
+      rp.id,
+      rp.target_type,
+      rp.target_id,
+      rp.party_id,
+      rp.reason,
+      rp.description,
+      party_target.id AS target_party_id,
+      party_target.title AS target_party_title,
+      party_target.host_id AS target_party_host_id,
+      user_target.id AS target_user_id,
+      user_target.name AS target_user_name,
+      chat_target.id AS target_chat_id,
+      chat_target.user_id AS chat_sender_id,
+      chat_target.party_id AS chat_party_id,
+      chat_party.title AS chat_party_title
+    FROM reports rp
+    LEFT JOIN parties party_target
+      ON rp.target_type = 'party' AND party_target.id = rp.target_id
+    LEFT JOIN users user_target
+      ON rp.target_type = 'user' AND user_target.id = rp.target_id
+    LEFT JOIN chat_messages chat_target
+      ON rp.target_type = 'chat' AND chat_target.id = rp.target_id
+    LEFT JOIN parties chat_party
+      ON chat_party.id = COALESCE(rp.party_id, chat_target.party_id)
+    WHERE rp.id = $1
+    `,
+    [reportId]
+  );
+
+  const report = result.rows[0];
+  if (!report) return null;
+
+  const warningReason = report.reason || "未填寫";
+  const commonWarningText = `你因不良行為受到使用者檢舉警告。若多次再犯，帳號可能會被停權。警告原因：${warningReason}`;
+
+  if (report.target_type === "party" && report.target_party_host_id) {
+    return {
+      userId: report.target_party_host_id,
+      partyId: report.target_party_id,
+      title: "飯局檢舉警告",
+      message: `${commonWarningText}。相關飯局：${report.target_party_title || "未命名飯局"}。請留意飯局內容、說明與互動規範。`,
+    };
+  }
+
+  if (report.target_type === "user" && report.target_user_id) {
+    return {
+      userId: report.target_user_id,
+      partyId: report.party_id || null,
+      title: "使用者檢舉警告",
+      message: `${commonWarningText}。請留意與其他使用者互動時的禮貌、準時與平台規範。`,
+    };
+  }
+
+  if (report.target_type === "chat" && report.chat_sender_id) {
+    return {
+      userId: report.chat_sender_id,
+      partyId: report.chat_party_id || report.party_id || null,
+      title: "聊天室檢舉警告",
+      message: `${commonWarningText}。相關飯局：${report.chat_party_title || "聊天室"}。請留意聊天室發言內容與平台規範。`,
+    };
+  }
+
+  return null;
+}
+
+async function createReportWarningNotification(reportId) {
+  await ensureNotificationsTable();
+
+  const target = await getReportWarningTarget(reportId);
+  if (!target?.userId) return null;
+
+  const result = await pool.query(
+    `
+    INSERT INTO notifications (user_id, type, title, message, party_id)
+    VALUES ($1, 'report_warning', $2, $3, $4)
+    RETURNING id, user_id, type, title, message, party_id, created_at
+    `,
+    [target.userId, target.title, target.message, target.partyId || null]
+  );
+
+  return result.rows[0] || null;
 }
 
 async function ensureRestaurantsTable() {
@@ -135,13 +243,14 @@ router.get("/summary", async (req, res) => {
 
     await ensureReportsTable();
 
-    const [users, parties, messages, ratings, restaurants, pendingReports, cancelled, ended] = await Promise.all([
+    const [users, parties, messages, ratings, restaurants, pendingReports, pendingVerifications, cancelled, ended] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS count FROM users"),
       pool.query("SELECT COUNT(*)::int AS count FROM parties"),
       pool.query("SELECT COUNT(*)::int AS count FROM chat_messages"),
       pool.query("SELECT COUNT(*)::int AS count FROM ratings"),
       pool.query("SELECT COUNT(*)::int AS count FROM restaurants"),
       pool.query("SELECT COUNT(*)::int AS count FROM reports WHERE status = 'pending'"),
+      pool.query("SELECT COUNT(*)::int AS count FROM users WHERE verify_status = 'pending'"),
       pool.query("SELECT COUNT(*)::int AS count FROM parties WHERE status = 'cancelled'"),
       pool.query("SELECT COUNT(*)::int AS count FROM parties WHERE status = 'ended'"),
     ]);
@@ -154,6 +263,7 @@ router.get("/summary", async (req, res) => {
         ratings: ratings.rows[0].count,
         restaurants: restaurants.rows[0].count,
         pendingReports: pendingReports.rows[0].count,
+        pendingVerifications: pendingVerifications.rows[0].count,
         cancelledParties: cancelled.rows[0].count,
         endedParties: ended.rows[0].count,
       },
@@ -184,6 +294,11 @@ router.get("/users", async (req, res) => {
         u.avatar,
         u.bio,
         COALESCE(u.role, 'user') AS role,
+        COALESCE(u.verify_status, 'approved') AS verify_status,
+        COALESCE(u.student_card_url, '') AS student_card_url,
+        COALESCE(u.student_card_review_note, '') AS student_card_review_note,
+        u.student_card_reviewed_at,
+        reviewer.name AS student_card_reviewed_by_name,
         u.created_at,
         COUNT(DISTINCT p.id)::int AS hosted_count,
         COUNT(DISTINCT pm.party_id)::int AS joined_count,
@@ -193,7 +308,8 @@ router.get("/users", async (req, res) => {
       LEFT JOIN parties p ON p.host_id = u.id
       LEFT JOIN party_members pm ON pm.user_id = u.id
       LEFT JOIN ratings r ON r.to_user_id = u.id
-      GROUP BY u.id
+      LEFT JOIN users reviewer ON reviewer.id = u.student_card_reviewed_by
+      GROUP BY u.id, reviewer.name
       ORDER BY u.created_at DESC, u.id DESC
       `
     );
@@ -351,6 +467,66 @@ router.delete("/parties/:id", async (req, res) => {
     res.status(500).json({ message: "管理員刪除飯局失敗", error: error.message });
   }
 });
+
+/**
+ * 管理員審核學生證
+ * PUT /api/admin/users/:id/verification
+ */
+router.put("/users/:id/verification", async (req, res) => {
+  try {
+    const admin = await assertAdmin(req, res);
+    if (!admin) return;
+
+    await ensureAdminRoleColumn();
+
+    const { id } = req.params;
+    const { status, note = "" } = req.body;
+    const allowedStatuses = new Set(["pending", "approved", "rejected"]);
+
+    if (!allowedStatuses.has(status)) {
+      return res.status(400).json({ message: "審核狀態不正確" });
+    }
+
+    const targetResult = await pool.query(
+      "SELECT id, account, role FROM users WHERE id = $1",
+      [id]
+    );
+
+    if (targetResult.rows.length === 0) {
+      return res.status(404).json({ message: "找不到使用者" });
+    }
+
+    const targetUser = targetResult.rows[0];
+
+    if (targetUser.role === "admin" || targetUser.account === "admin") {
+      return res.status(400).json({ message: "管理員帳號不需要學生證審核" });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE users
+      SET verify_status = $1,
+          student_card_review_note = $2,
+          student_card_reviewed_at = CURRENT_TIMESTAMP,
+          student_card_reviewed_by = $3
+      WHERE id = $4
+      RETURNING id, account, name, student_id, department, avatar, bio, role,
+                verify_status, student_card_url, student_card_review_note,
+                student_card_reviewed_at, created_at
+      `,
+      [status, String(note || "").trim(), admin.id, id]
+    );
+
+    res.json({
+      message: status === "approved" ? "學生證審核已通過" : status === "rejected" ? "學生證審核已退回" : "學生證審核狀態已改為待審",
+      user: result.rows[0],
+    });
+  } catch (error) {
+    console.error("更新學生證審核狀態失敗：", error);
+    res.status(500).json({ message: "更新學生證審核狀態失敗", error: error.message });
+  }
+});
+
 
 /**
  * 管理員刪除使用者
@@ -643,11 +819,11 @@ router.put("/reports/:id/status", async (req, res) => {
     const result = await pool.query(
       `
       UPDATE reports
-      SET status = $1,
-          admin_note = $2,
-          handled_by = CASE WHEN $1 = 'pending' THEN NULL ELSE $3 END,
-          handled_at = CASE WHEN $1 = 'pending' THEN NULL ELSE CURRENT_TIMESTAMP END
-      WHERE id = $4
+      SET status = $1::varchar,
+          admin_note = $2::text,
+          handled_by = CASE WHEN $1::varchar = 'pending' THEN NULL ELSE $3::int END,
+          handled_at = CASE WHEN $1::varchar = 'pending' THEN NULL ELSE CURRENT_TIMESTAMP END
+      WHERE id = $4::int
       RETURNING *
       `,
       [status, String(adminNote || "").trim(), admin.id, id]
@@ -657,7 +833,18 @@ router.put("/reports/:id/status", async (req, res) => {
       return res.status(404).json({ message: "找不到檢舉資料" });
     }
 
-    res.json({ message: "檢舉狀態已更新", report: result.rows[0] });
+    let warningNotification = null;
+    if (status === "resolved") {
+      warningNotification = await createReportWarningNotification(id);
+    }
+
+    res.json({
+      message: status === "resolved" && warningNotification
+        ? "檢舉狀態已更新，並已發送警告通知"
+        : "檢舉狀態已更新",
+      report: result.rows[0],
+      warningNotification,
+    });
   } catch (error) {
     console.error("更新檢舉狀態失敗：", error);
     res.status(500).json({ message: "更新檢舉狀態失敗", error: error.message });
