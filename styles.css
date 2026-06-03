@@ -8667,3 +8667,203 @@ body {
   display: inline-flex;
 }
 
+
+
+/* ======================================================
+   CORE IMPROVEMENT PATCH
+   主辦人平均評分與飯局開始提醒通知樣式
+   ====================================================== */
+.host-preview-rating {
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.notice-card--party_reminder {
+  border-left-color: #d6a84f;
+}
+
+/* ======================================================
+   APP DIALOG PATCH
+   將重要警示窗改成符合網站風格的置中彈窗。
+   ====================================================== */
+.app-dialog-lock {
+  overflow: hidden;
+}
+
+.app-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.app-dialog[hidden] {
+  display: none;
+}
+
+.app-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.12), transparent 34%),
+    rgba(0, 0, 0, 0.66);
+  backdrop-filter: blur(8px);
+}
+
+.app-dialog__panel {
+  position: relative;
+  width: min(460px, 100%);
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 26px;
+  background:
+    linear-gradient(145deg, rgba(34, 34, 34, 0.96), rgba(18, 18, 18, 0.94));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  color: var(--white);
+  transform: translateY(10px) scale(0.96);
+  opacity: 0;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.app-dialog--open .app-dialog__panel {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.app-dialog__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white);
+  font-size: 1.25rem;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.app-dialog__panel--danger .app-dialog__icon {
+  background: rgba(255, 120, 120, 0.18);
+}
+
+.app-dialog__content {
+  min-width: 0;
+}
+
+.app-dialog__title {
+  margin: 0 0 8px;
+  font-size: 1.12rem;
+  line-height: 1.35;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.app-dialog__message {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.app-dialog__input {
+  width: 100%;
+  min-height: 98px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.app-dialog__input::placeholder {
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.app-dialog__input:focus {
+  border-color: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.app-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.app-dialog__btn {
+  min-width: 86px;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.app-dialog__btn--ghost {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--white);
+}
+
+.app-dialog__btn--primary {
+  background: var(--white);
+  color: var(--dark);
+}
+
+.app-dialog__btn--danger {
+  background: #ffe0e0;
+  color: #5b1616;
+}
+
+.app-dialog__btn:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 767px) {
+  .app-dialog {
+    align-items: center;
+    padding: 16px;
+  }
+
+  .app-dialog__panel {
+    grid-template-columns: 1fr;
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .app-dialog__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 15px;
+  }
+
+  .app-dialog__actions {
+    flex-direction: column-reverse;
+  }
+
+  .app-dialog__btn {
+    width: 100%;
+  }
+}
+

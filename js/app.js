@@ -171,6 +171,7 @@
     const dietAddBtn = $("#diet-add-btn");
     const cuisineAddBtn = $("#cuisine-add-btn");
     const hostPreviewName = $("#host-preview-name");
+    const hostPreviewRating = $("#host-preview-rating");
     const hostPreviewDiet = $("#host-preview-diet");
     const hostPreviewBio = $("#host-preview-bio");
     const ratingPartyTitle = $("#rating-party-title");
@@ -740,6 +741,183 @@
 
 
     /* ======================================================
+     * 網站風格警示窗 / 確認窗 / 輸入窗
+     * ====================================================== */
+    function ensureAppDialog() {
+        let dialog = document.querySelector(".app-dialog");
+
+        if (dialog) return dialog;
+
+        dialog = document.createElement("div");
+        dialog.className = "app-dialog";
+        dialog.hidden = true;
+        dialog.innerHTML = `
+            <div class="app-dialog__backdrop" data-dialog-close="cancel"></div>
+            <section class="app-dialog__panel" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">
+                <div class="app-dialog__icon" aria-hidden="true">!</div>
+                <div class="app-dialog__content">
+                    <h3 class="app-dialog__title" id="app-dialog-title">系統提示</h3>
+                    <p class="app-dialog__message"></p>
+                    <textarea class="app-dialog__input" rows="3" hidden></textarea>
+                    <div class="app-dialog__actions">
+                        <button type="button" class="app-dialog__btn app-dialog__btn--ghost" data-dialog-action="cancel">取消</button>
+                        <button type="button" class="app-dialog__btn app-dialog__btn--primary" data-dialog-action="confirm">確定</button>
+                    </div>
+                </div>
+            </section>
+        `;
+
+        document.body.appendChild(dialog);
+        return dialog;
+    }
+
+    function openAppDialog(options = {}) {
+        const dialog = ensureAppDialog();
+
+        if (dialog.__hideTimer) {
+            clearTimeout(dialog.__hideTimer);
+            dialog.__hideTimer = null;
+        }
+
+        const panel = $(".app-dialog__panel", dialog);
+        const title = $(".app-dialog__title", dialog);
+        const message = $(".app-dialog__message", dialog);
+        const input = $(".app-dialog__input", dialog);
+        const cancelBtn = $('[data-dialog-action="cancel"]', dialog);
+        const confirmBtn = $('[data-dialog-action="confirm"]', dialog);
+
+        const {
+            title: dialogTitle = "系統提示",
+            message: dialogMessage = "",
+            mode = "alert",
+            defaultValue = "",
+            placeholder = "",
+            confirmText = "確定",
+            cancelText = "取消",
+            danger = false,
+        } = options;
+
+        title.textContent = dialogTitle;
+        message.textContent = dialogMessage;
+        confirmBtn.textContent = confirmText;
+        cancelBtn.textContent = cancelText;
+        input.hidden = mode !== "prompt";
+        input.value = defaultValue;
+        input.placeholder = placeholder;
+        cancelBtn.hidden = mode === "alert";
+        confirmBtn.classList.toggle("app-dialog__btn--danger", danger);
+        panel.classList.toggle("app-dialog__panel--danger", danger);
+
+        dialog.hidden = false;
+        dialog.classList.add("app-dialog--open");
+        document.body.classList.add("app-dialog-lock");
+
+        return new Promise((resolve) => {
+            let isClosing = false;
+
+            const close = (value) => {
+                if (isClosing) return;
+                isClosing = true;
+
+                dialog.classList.remove("app-dialog--open");
+                document.body.classList.remove("app-dialog-lock");
+
+                if (dialog.__hideTimer) {
+                    clearTimeout(dialog.__hideTimer);
+                    dialog.__hideTimer = null;
+                }
+
+                dialog.__hideTimer = setTimeout(() => {
+                    dialog.hidden = true;
+                    dialog.__hideTimer = null;
+                }, 160);
+
+                dialog.removeEventListener("click", handleClick);
+                dialog.removeEventListener("keydown", handleKeydown);
+                resolve(value);
+            };
+
+            const handleClick = (event) => {
+                const action = event.target?.dataset?.dialogAction || event.target?.dataset?.dialogClose;
+                if (!action) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (action === "cancel") {
+                    close(mode === "confirm" ? false : null);
+                    return;
+                }
+
+                if (action === "confirm") {
+                    if (mode === "prompt") close(input.value);
+                    else if (mode === "confirm") close(true);
+                    else close(true);
+                }
+            };
+
+            const handleKeydown = (event) => {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    close(mode === "confirm" ? false : null);
+                }
+
+                if (event.key === "Enter" && mode !== "prompt") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    close(mode === "confirm" ? true : true);
+                }
+            };
+
+            dialog.addEventListener("click", handleClick);
+            dialog.addEventListener("keydown", handleKeydown);
+
+            setTimeout(() => {
+                if (mode === "prompt") input.focus();
+                else confirmBtn.focus();
+            }, 0);
+        });
+    }
+
+    function showAppAlert(message, title = "系統提示", options = {}) {
+        return openAppDialog({
+            title,
+            message,
+            mode: "alert",
+            confirmText: options.confirmText || "我知道了",
+            danger: options.danger === true,
+        });
+    }
+
+    function showAppConfirm(message, options = {}) {
+        return openAppDialog({
+            title: options.title || "確認操作",
+            message,
+            mode: "confirm",
+            confirmText: options.confirmText || "確定",
+            cancelText: options.cancelText || "取消",
+            danger: options.danger === true,
+        });
+    }
+
+    async function showAppPrompt(message, options = {}) {
+        const result = await openAppDialog({
+            title: options.title || "輸入內容",
+            message,
+            mode: "prompt",
+            defaultValue: options.defaultValue || "",
+            placeholder: options.placeholder || "",
+            confirmText: options.confirmText || "送出",
+            cancelText: options.cancelText || "取消",
+            danger: options.danger === true,
+        });
+
+        return result === null ? null : String(result);
+    }
+
+
+    /* ======================================================
      * 建立飯局日期與餐期時間選項
      * ====================================================== */
     const MEAL_TIME_OPTIONS = {
@@ -1052,6 +1230,7 @@
             cancel: "飯局取消",
             chat: "聊天室",
             rating: "評價通知",
+            party_reminder: "飯局提醒",
         };
 
         return labels[type] || "系統通知";
@@ -1431,10 +1610,22 @@
         }
     }
 
+    function formatHostRatingText(profile = {}) {
+        const count = Number(profile.ratingCount || profile.hostRatingCount || 0);
+        const average = profile.averageRating ?? profile.hostAverageRating;
+
+        if (!count || average === null || average === undefined || average === "") {
+            return "平均評分：尚無評價";
+        }
+
+        return `平均評分：${Number(average).toFixed(1)} / 5（${count} 則）`;
+    }
+
     function applyPartyHostPreview(profile = {}) {
         const preferences = [...(profile.diet || []), ...(profile.cuisine || [])];
 
         if (hostPreviewName) hostPreviewName.textContent = profile.name || "約飯人 先生/小姐";
+        if (hostPreviewRating) hostPreviewRating.textContent = formatHostRatingText(profile);
         if (hostPreviewDiet) {
             hostPreviewDiet.textContent = preferences.length
                 ? preferences.join("・")
@@ -1458,6 +1649,8 @@
             diet: normalizedParty.hostDiet,
             cuisine: normalizedParty.hostCuisine,
             bio: normalizedParty.hostBio,
+            averageRating: normalizedParty.hostAverageRating,
+            ratingCount: normalizedParty.hostRatingCount,
         };
 
         applyPartyHostPreview(fallbackProfile);
@@ -1469,6 +1662,21 @@
             if (!partyHostProfileCache[hostId]) {
                 const result = await api.getUserProfile(hostId);
                 const groupedPreferences = groupPreferences(result.preferences || []);
+                let ratingSummary = {
+                    average: fallbackProfile.averageRating,
+                    count: fallbackProfile.ratingCount || 0,
+                };
+
+                try {
+                    const ratingResult = await api.getRatingSummary(hostId);
+                    ratingSummary = {
+                        average: ratingResult.summary?.average ?? ratingSummary.average,
+                        count: Number(ratingResult.summary?.count ?? ratingSummary.count) || 0,
+                    };
+                } catch (ratingError) {
+                    console.warn("讀取主辦人評分失敗：", ratingError);
+                }
+
                 partyHostProfileCache[hostId] = {
                     name: result.user?.name || fallbackProfile.name,
                     department: result.user?.department || fallbackProfile.department,
@@ -1476,6 +1684,8 @@
                     cuisine: groupedPreferences.cuisine,
                     bio: result.user?.bio || fallbackProfile.bio,
                     avatar: result.user?.avatar || fallbackProfile.avatar || "",
+                    averageRating: ratingSummary.average,
+                    ratingCount: ratingSummary.count,
                 };
             }
 
@@ -2007,6 +2217,8 @@
             hostDepartment: party.host_department || "",
             hostBio: party.host_bio || "",
             hostAvatar: party.host_avatar || "",
+            hostAverageRating: party.host_average_rating,
+            hostRatingCount: party.host_rating_count,
             store: party.restaurant_name || party.store,
             restaurantId: party.restaurant_id,
             restaurantCategory: party.restaurant_category || "",
@@ -2100,6 +2312,8 @@
             hostDepartment: rawParty.hostDepartment || rawParty.host_department || "",
             hostBio: rawParty.hostBio || rawParty.host_bio || "",
             hostAvatar: rawParty.hostAvatar || rawParty.host_avatar || "",
+            hostAverageRating: rawParty.hostAverageRating ?? rawParty.host_average_rating ?? null,
+            hostRatingCount: Number(rawParty.hostRatingCount ?? rawParty.host_rating_count ?? 0) || 0,
             hostDiet: Array.isArray(rawParty.hostDiet) ? rawParty.hostDiet : [],
             hostCuisine: Array.isArray(rawParty.hostCuisine) ? rawParty.hostCuisine : [],
             store: rawParty.store || rawParty.restaurantName || "店家名稱",
@@ -2137,6 +2351,8 @@
             hostDepartment: card.dataset.hostDepartment || "",
             hostBio: card.dataset.hostBio || "",
             hostAvatar: card.dataset.hostAvatar || "",
+            hostAverageRating: card.dataset.hostAverageRating || null,
+            hostRatingCount: card.dataset.hostRatingCount || 0,
             imageUrl: card.dataset.imageUrl || "",
             store: card.dataset.store || "店家名稱",
             restaurantId: card.dataset.restaurantId || "",
@@ -2671,62 +2887,112 @@
         return isOwner && (status.key === "canceled" || status.key === "ended");
     }
 
+    async function askCancelReason(partyName = "這場飯局") {
+        const reason = await showAppPrompt(
+            `確定要取消「${partyName}」嗎？取消後將無法再讓其他人加入。\n請在下方填寫取消原因，其他成員會在通知中心看到這段說明。`,
+            {
+                title: "確認取消飯局",
+                placeholder: "例如：臨時有事、餐廳沒開、人數不足",
+                confirmText: "確認取消",
+                cancelText: "返回",
+                danger: true,
+            }
+        );
+
+        if (reason === null) return null;
+
+        const normalizedReason = String(reason || "").trim();
+        return normalizedReason || "主辦人未填寫原因";
+    }
+
+    function markPartyAsCanceled(party) {
+        return normalizeParty({
+            ...party,
+            status: "cancelled",
+            isCanceled: true,
+            canceledAt: new Date().toISOString(),
+        });
+    }
+
     async function cancelCurrentParty() {
         if (!currentParty) return null;
 
         if (!canCurrentUserCancelParty(currentParty)) {
-            alert("只有主辦人可以取消飯局，或此飯局已經取消。");
-            return currentParty;
+            await showAppAlert("只有主辦人可以取消尚未開始且尚未取消的飯局。", "無法取消飯局", { danger: true });
+            return null;
         }
 
         const party = normalizeParty(currentParty);
+        const cancelReason = await askCancelReason(party.partyName);
+        if (cancelReason === null) return null;
 
         try {
             if (isBackendPartyId(party.id)) {
-                await api.cancelParty(party.id, currentUser.id);
+                const cancelResult = await api.cancelParty(party.id, currentUser.id, cancelReason);
+                const finalReason = cancelResult?.cancelReason || cancelReason;
 
-                currentParty = await loadBackendPartyDetail(party.id);
+                let latestParty = null;
+                try {
+                    latestParty = await loadBackendPartyDetail(party.id);
+                } catch (detailError) {
+                    console.warn("取消後重新讀取飯局詳情失敗，改用本機狀態更新：", detailError);
+                    latestParty = {
+                        ...party,
+                        ...(cancelResult?.party || {}),
+                    };
+                }
 
-                addNotification(
+                currentParty = markPartyAsCanceled({
+                    ...latestParty,
+                    id: party.id,
+                    partyName: latestParty.partyName || party.partyName,
+                    host: latestParty.host || party.host,
+                    hostId: latestParty.hostId || party.hostId,
+                    members: latestParty.members || party.members,
+                });
+
+                await addNotification(
                     "cancel",
                     "飯局已取消",
-                    `主辦人已取消「${party.partyName}」，此飯局將無法再加入。`,
+                    `你已取消「${party.partyName}」。取消原因：${finalReason}`,
                     party.id
                 );
 
                 await loadBackendParties();
-
                 prepareOtherPartyCard();
                 renderHomeParties();
                 renderChatRoomList();
-                renderNotifications();
+                await renderNotifications();
 
-                return currentParty;
+                return {
+                    party: currentParty,
+                    message: "飯局已取消，系統已通知其他成員。",
+                };
             }
 
-            party.isCanceled = true;
-            party.canceledAt = new Date().toISOString();
-            currentParty = party;
+            currentParty = markPartyAsCanceled(party);
+            updateStoredParty(currentParty);
 
-            updateStoredParty(party);
-
-            addNotification(
+            await addNotification(
                 "cancel",
                 "飯局已取消",
-                `主辦人已取消「${party.partyName}」，此飯局將無法再加入。`,
+                `你已取消「${party.partyName}」。取消原因：${cancelReason}`,
                 party.id
             );
 
             prepareOtherPartyCard();
             renderHomeParties();
             renderChatRoomList();
-            renderNotifications();
+            await renderNotifications();
 
-            return party;
+            return {
+                party: currentParty,
+                message: "飯局已取消。",
+            };
         } catch (error) {
             console.error("取消飯局失敗：", error);
-            alert(error.message || "取消飯局失敗");
-            return party;
+            await showAppAlert(error.message || "取消飯局失敗，請稍後再試", "取消失敗", { danger: true });
+            return null;
         }
     }
 
@@ -2754,7 +3020,9 @@
 
 
         if (partyCancelBtn) {
-            partyCancelBtn.hidden = !canCurrentUserCancelParty(party);
+            const canCancel = canCurrentUserCancelParty(party);
+            partyCancelBtn.hidden = !canCancel;
+            partyCancelBtn.disabled = !canCancel;
         }
 
         if (partyChatBtn) {
@@ -4251,7 +4519,13 @@
             cancelBtn.textContent = "取消";
             cancelBtn.disabled = party.status === "cancelled";
             cancelBtn.addEventListener("click", async () => {
-                if (!confirm(`確定要取消飯局「${party.title}」嗎？`)) return;
+                const confirmed = await showAppConfirm(`確定要取消飯局「${party.title}」嗎？`, {
+                    title: "取消飯局",
+                    confirmText: "確認取消",
+                    cancelText: "返回",
+                    danger: true,
+                });
+                if (!confirmed) return;
                 await api.adminCancelParty(party.id, currentUser.id);
                 await loadAdminDashboard();
                 await loadBackendParties();
@@ -4262,7 +4536,13 @@
             deleteBtn.className = "admin-danger-btn";
             deleteBtn.textContent = "刪除";
             deleteBtn.addEventListener("click", async () => {
-                if (!confirm(`確定要刪除飯局「${party.title}」嗎？此動作無法復原。`)) return;
+                const confirmed = await showAppConfirm(`確定要刪除飯局「${party.title}」嗎？此動作無法復原。`, {
+                    title: "刪除飯局",
+                    confirmText: "確認刪除",
+                    cancelText: "返回",
+                    danger: true,
+                });
+                if (!confirmed) return;
                 await api.adminDeleteParty(party.id, currentUser.id);
                 await loadAdminDashboard();
                 await loadBackendParties();
@@ -5076,10 +5356,12 @@
 
         partyCancelBtn?.addEventListener("click", async () => {
             if (!currentParty) return;
-            if (!confirm("確定要取消這個飯局嗎？取消後將無法再讓其他人加入。")) return;
 
-            const updatedParty = await cancelCurrentParty();
-            if (!updatedParty) return;
+            const cancelResult = await cancelCurrentParty();
+            if (!cancelResult?.party) return;
+
+            const updatedParty = markPartyAsCanceled(cancelResult.party);
+            currentParty = updatedParty;
 
             fillPartyFields(detailFields, updatedParty);
             fillPartyFields(joinedFields, updatedParty);
@@ -5091,12 +5373,18 @@
                 partyJoinBtn.disabled = true;
                 partyJoinBtn.textContent = "已取消";
             }
+
+            if (partyCancelBtn) {
+                partyCancelBtn.hidden = true;
+                partyCancelBtn.disabled = true;
+            }
+
             if (partyDetailDeleteBtn) {
                 partyDetailDeleteBtn.hidden = false;
             }
 
-            alert("飯局已取消，狀態已更新為已取消。 ");
             switchView("partyDetail");
+            await showAppAlert(cancelResult.message || "飯局已取消。", "取消成功");
         });
 
         partyRateBtn?.addEventListener("click", openRatingPage);

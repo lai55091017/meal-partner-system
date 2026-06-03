@@ -29,6 +29,52 @@ function isAdminUserRow(user) {
   return user?.role === "admin" || user?.account === "admin";
 }
 
+async function ensureNotificationsTableForPartyRoutes(client = pool) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type VARCHAR(50) NOT NULL DEFAULT 'system',
+      title VARCHAR(100) NOT NULL,
+      message TEXT NOT NULL,
+      party_id INTEGER REFERENCES parties(id) ON DELETE SET NULL,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+async function notifyPartyMembersCancelled(client, partyId, hostId, partyTitle, cancelReason) {
+  await ensureNotificationsTableForPartyRoutes(client);
+
+  const membersResult = await client.query(
+    `
+    SELECT DISTINCT user_id
+    FROM party_members
+    WHERE party_id = $1
+      AND user_id <> $2
+    `,
+    [partyId, hostId]
+  );
+
+  const reasonText = String(cancelReason || "").trim() || "主辦人未填寫原因";
+
+  for (const member of membersResult.rows) {
+    await client.query(
+      `
+      INSERT INTO notifications (user_id, type, title, message, party_id)
+      VALUES ($1, 'cancel', $2, $3, $4)
+      `,
+      [
+        member.user_id,
+        "飯局已取消",
+        `主辦人已取消「${partyTitle || "飯局"}」。取消原因：${reasonText}`,
+        partyId,
+      ]
+    );
+  }
+}
+
 function parsePartyTime(partyTime) {
   const text = String(partyTime || "").trim();
   const dateTimeMatch = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})$/);
@@ -58,6 +104,31 @@ function validatePartyTimeForCreate(partyTime) {
   if (!partyDateTime) return "飯局時間格式不正確，請重新選擇日期與時間";
   if (partyDateTime.getTime() <= Date.now()) return "只能建立尚未到達時間點的飯局";
   return "";
+}
+
+async function findUserTimeConflict(client, userId, partyTime, excludePartyId = null) {
+  const targetTime = parsePartyTime(partyTime);
+  if (!targetTime) return null;
+
+  const result = await client.query(
+    `
+    SELECT DISTINCT
+      p.id,
+      p.title,
+      p.party_time
+    FROM parties p
+    LEFT JOIN party_members pm ON pm.party_id = p.id
+    WHERE (p.host_id = $1 OR pm.user_id = $1)
+      AND p.status = 'open'
+      AND ($2::int IS NULL OR p.id <> $2::int)
+    `,
+    [userId, excludePartyId ? Number(excludePartyId) : null]
+  );
+
+  return result.rows.find((party) => {
+    const otherTime = parsePartyTime(party.party_time);
+    return otherTime && otherTime.getTime() === targetTime.getTime();
+  }) || null;
 }
 
 function normalizePartyStatusForResponse(party) {
@@ -92,6 +163,7 @@ async function markExpiredOpenPartiesEnded() {
     SELECT id, party_time
     FROM parties
     WHERE status = 'open'
+      AND status <> 'deleted'
     `
   );
 
@@ -162,6 +234,16 @@ router.get("/", async (req, res) => {
         u.name AS host_name,
         u.account AS host_account,
         u.avatar AS host_avatar,
+        (
+          SELECT ROUND(AVG(rt.score)::numeric, 2)
+          FROM ratings rt
+          WHERE rt.to_user_id = u.id
+        ) AS host_average_rating,
+        (
+          SELECT COUNT(*)::int
+          FROM ratings rt
+          WHERE rt.to_user_id = u.id
+        ) AS host_rating_count,
         COUNT(pm.user_id)::int AS current_people,
         EXISTS (
           SELECT 1
@@ -173,6 +255,7 @@ router.get("/", async (req, res) => {
       LEFT JOIN restaurants r ON r.id = p.restaurant_id
       JOIN users u ON p.host_id = u.id
       LEFT JOIN party_members pm ON p.id = pm.party_id
+      WHERE p.status <> 'deleted'
       GROUP BY p.id, u.id, r.id
       ORDER BY p.created_at DESC
       `,
@@ -227,12 +310,23 @@ router.get("/:id", async (req, res) => {
         u.department AS host_department,
         u.bio AS host_bio,
         u.avatar AS host_avatar,
+        (
+          SELECT ROUND(AVG(rt.score)::numeric, 2)
+          FROM ratings rt
+          WHERE rt.to_user_id = u.id
+        ) AS host_average_rating,
+        (
+          SELECT COUNT(*)::int
+          FROM ratings rt
+          WHERE rt.to_user_id = u.id
+        ) AS host_rating_count,
         COUNT(pm.user_id) AS current_people
       FROM parties p
       LEFT JOIN restaurants r ON r.id = p.restaurant_id
       JOIN users u ON p.host_id = u.id
       LEFT JOIN party_members pm ON p.id = pm.party_id
       WHERE p.id = $1
+        AND p.status <> 'deleted'
       GROUP BY p.id, u.id, r.id
       `,
       [id]
@@ -332,6 +426,14 @@ router.post("/", async (req, res) => {
       await client.query("ROLLBACK");
       return res.status(403).json({
         message: "管理員帳號為純後台模式，不能建立飯局",
+      });
+    }
+
+    const hostTimeConflict = await findUserTimeConflict(client, hostId, partyTime);
+    if (hostTimeConflict) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: `你在這個時間已經有飯局「${hostTimeConflict.title}」，不能建立時間衝突的飯局`,
       });
     }
 
@@ -486,6 +588,14 @@ router.post("/:id/join", async (req, res) => {
       });
     }
 
+    const joinTimeConflict = await findUserTimeConflict(client, userId, party.party_time, id);
+    if (joinTimeConflict) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: `你在這個時間已經有飯局「${joinTimeConflict.title}」，不能加入時間衝突的飯局`,
+      });
+    }
+
     if (currentPeople >= Number(party.max_people)) {
       await client.query("ROLLBACK");
       return res.status(400).json({
@@ -620,9 +730,11 @@ router.post("/:id/leave", async (req, res) => {
  * POST /api/parties/:id/cancel
  */
 router.post("/:id/cancel", async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const { id } = req.params;
-    const { userId } = req.body;
+    const { userId, cancelReason = "" } = req.body;
 
     if (!userId) {
       return res.status(400).json({
@@ -630,52 +742,61 @@ router.post("/:id/cancel", async (req, res) => {
       });
     }
 
-    const cancelUser = await getUserForRegularAction(pool, userId);
+    await client.query("BEGIN");
+
+    const cancelUser = await getUserForRegularAction(client, userId);
     if (!cancelUser) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: "找不到使用者" });
     }
 
     if (isAdminUserRow(cancelUser)) {
+      await client.query("ROLLBACK");
       return res.status(403).json({ message: "管理員帳號為純後台模式，不能使用一般取消飯局功能，請使用後台管理操作" });
     }
 
-    const partyResult = await pool.query(
+    const partyResult = await client.query(
       `
-      SELECT id, host_id, status, party_time
+      SELECT id, title, host_id, status, party_time
       FROM parties
       WHERE id = $1
+      FOR UPDATE
       `,
       [id]
     );
 
     if (partyResult.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({
         message: "找不到飯局",
       });
     }
 
     let party = partyResult.rows[0];
-    party = await markPartyEndedIfTimePassed(pool, party);
+    party = await markPartyEndedIfTimePassed(client, party);
 
     if (Number(party.host_id) !== Number(userId)) {
+      await client.query("ROLLBACK");
       return res.status(403).json({
         message: "只有主辦人可以取消飯局",
       });
     }
 
     if (party.status === "cancelled") {
+      await client.query("ROLLBACK");
       return res.status(400).json({
         message: "此飯局已經取消",
       });
     }
 
     if (party.status === "ended") {
+      await client.query("ROLLBACK");
       return res.status(400).json({
         message: "此飯局已結束，不能取消"
       });
     }
 
-    const result = await pool.query(
+    const result = await client.query(
       `
       UPDATE parties
       SET status = 'cancelled'
@@ -685,17 +806,27 @@ router.post("/:id/cancel", async (req, res) => {
       [id]
     );
 
+    const reasonText = String(cancelReason || "").trim() || "主辦人未填寫原因";
+    await notifyPartyMembersCancelled(client, id, userId, party.title, reasonText);
+
+    await client.query("COMMIT");
+
     res.json({
       message: "飯局已取消",
       party: result.rows[0],
+      cancelReason: reasonText,
     });
   } catch (error) {
+    await client.query("ROLLBACK");
+
     console.error("取消飯局失敗：", error);
 
     res.status(500).json({
       message: "取消飯局失敗",
       error: error.message,
     });
+  } finally {
+    client.release();
   }
 });
 
@@ -758,14 +889,20 @@ router.delete("/:id", async (req, res) => {
     }
 
     await client.query("DELETE FROM chat_messages WHERE party_id = $1", [id]);
-    await client.query("DELETE FROM ratings WHERE party_id = $1", [id]);
     await client.query("DELETE FROM party_members WHERE party_id = $1", [id]);
     await client.query("UPDATE notifications SET party_id = NULL WHERE party_id = $1", [id]);
-    await client.query("DELETE FROM parties WHERE id = $1", [id]);
+    await client.query(
+      `
+      UPDATE parties
+      SET status = 'deleted'
+      WHERE id = $1
+      `,
+      [id]
+    );
 
     await client.query("COMMIT");
 
-    res.json({ message: "飯局已從資料庫刪除" });
+    res.json({ message: "飯局紀錄已刪除，歷史評價已保留" });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("刪除飯局失敗：", error);

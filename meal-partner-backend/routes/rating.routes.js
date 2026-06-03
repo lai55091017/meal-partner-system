@@ -35,6 +35,37 @@ function isAdminUserRow(user) {
   return user?.role === "admin" || user?.account === "admin";
 }
 
+async function ensureRatingHistoryColumns(client = pool) {
+  await client.query("ALTER TABLE ratings ADD COLUMN IF NOT EXISTS party_title_snapshot TEXT DEFAULT ''");
+  await client.query("ALTER TABLE ratings ADD COLUMN IF NOT EXISTS reviewer_name_snapshot TEXT DEFAULT ''");
+  await client.query("ALTER TABLE ratings ADD COLUMN IF NOT EXISTS target_name_snapshot TEXT DEFAULT ''");
+  await client.query("ALTER TABLE ratings ALTER COLUMN party_id DROP NOT NULL");
+  await client.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'ratings_party_id_fkey'
+      ) THEN
+        ALTER TABLE ratings DROP CONSTRAINT ratings_party_id_fkey;
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'ratings_party_id_fkey'
+      ) THEN
+        ALTER TABLE ratings
+        ADD CONSTRAINT ratings_party_id_fkey
+        FOREIGN KEY (party_id)
+        REFERENCES parties(id)
+        ON DELETE SET NULL;
+      END IF;
+    END $$;
+  `);
+}
+
 function parsePartyEndTime(partyTime) {
   const text = String(partyTime || "");
   const dateTimeMatch = text.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*(\d{1,2}):(\d{2})/);
@@ -121,23 +152,25 @@ router.get("/received/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
 
+    await ensureRatingHistoryColumns();
+
     const result = await pool.query(
       `
       SELECT
         r.id,
         r.party_id,
-        p.title AS party_name,
+        COALESCE(p.title, NULLIF(r.party_title_snapshot, ''), '已刪除的飯局') AS party_name,
         r.from_user_id AS reviewer_id,
-        reviewer.name AS reviewer_name,
+        COALESCE(reviewer.name, NULLIF(r.reviewer_name_snapshot, ''), reviewer.account, '使用者') AS reviewer_name,
         reviewer.account AS reviewer_account,
         r.to_user_id AS target_id,
-        target.name AS target_name,
+        COALESCE(target.name, NULLIF(r.target_name_snapshot, ''), target.account, '使用者') AS target_name,
         target.account AS target_account,
         r.score,
         r.comment,
         r.created_at
       FROM ratings r
-      JOIN parties p ON r.party_id = p.id
+      LEFT JOIN parties p ON r.party_id = p.id
       JOIN users reviewer ON r.from_user_id = reviewer.id
       JOIN users target ON r.to_user_id = target.id
       WHERE r.to_user_id = $1
@@ -160,6 +193,8 @@ router.get("/received/:userId", async (req, res) => {
 router.get("/summary/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
+
+    await ensureRatingHistoryColumns();
 
     const result = await pool.query(
       `
@@ -206,6 +241,8 @@ router.post("/", async (req, res) => {
     }
 
     await client.query("BEGIN");
+
+    await ensureRatingHistoryColumns(client);
 
     const reviewerUser = await getUserForRegularAction(client, reviewerId);
     if (!reviewerUser) {
@@ -302,13 +339,40 @@ router.post("/", async (req, res) => {
         return res.status(400).json({ message: "只能評價同一場飯局的成員" });
       }
 
+      const targetUser = await client.query(
+        `
+        SELECT id, name, account
+        FROM users
+        WHERE id = $1
+        `,
+        [targetId]
+      );
+
       const insertResult = await client.query(
         `
-        INSERT INTO ratings (party_id, from_user_id, to_user_id, score, comment)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO ratings (
+          party_id,
+          party_title_snapshot,
+          from_user_id,
+          reviewer_name_snapshot,
+          to_user_id,
+          target_name_snapshot,
+          score,
+          comment
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
         `,
-        [partyId, reviewerId, targetId, score, comment]
+        [
+          partyId,
+          party.title || "",
+          reviewerId,
+          reviewerUser.name || reviewerUser.account || "",
+          targetId,
+          targetUser.rows[0]?.name || targetUser.rows[0]?.account || "",
+          score,
+          comment,
+        ]
       );
 
       insertedRatings.push(insertResult.rows[0]);

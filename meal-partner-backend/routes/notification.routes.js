@@ -18,6 +18,79 @@ async function ensureNotificationsTable() {
   `);
 }
 
+function parsePartyStartTime(partyTime) {
+  const text = String(partyTime || "").trim();
+  const dateTimeMatch = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})$/);
+
+  if (dateTimeMatch) {
+    const [, year, month, day, hour, minute] = dateTimeMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), 0, 0);
+  }
+
+  const todayMatch = text.match(/今天\s*(\d{1,2}):(\d{2})/);
+  if (todayMatch) {
+    const time = new Date();
+    time.setHours(Number(todayMatch[1]), Number(todayMatch[2]), 0, 0);
+    return time;
+  }
+
+  return null;
+}
+
+async function createUpcomingPartyReminders(userId) {
+  const partiesResult = await pool.query(
+    `
+    SELECT DISTINCT
+      p.id,
+      p.title,
+      p.party_time
+    FROM parties p
+    LEFT JOIN party_members pm ON pm.party_id = p.id
+    WHERE (p.host_id = $1 OR pm.user_id = $1)
+      AND p.status = 'open'
+    `,
+    [userId]
+  );
+
+  const now = Date.now();
+  const reminderWindowMs = 30 * 60 * 1000;
+
+  for (const party of partiesResult.rows) {
+    const startTime = parsePartyStartTime(party.party_time);
+    if (!startTime) continue;
+
+    const diff = startTime.getTime() - now;
+    if (diff < 0 || diff > reminderWindowMs) continue;
+
+    const existing = await pool.query(
+      `
+      SELECT id
+      FROM notifications
+      WHERE user_id = $1
+        AND party_id = $2
+        AND type = 'party_reminder'
+      LIMIT 1
+      `,
+      [userId, party.id]
+    );
+
+    if (existing.rows.length > 0) continue;
+
+    await pool.query(
+      `
+      INSERT INTO notifications (user_id, type, title, message, party_id)
+      VALUES ($1, 'party_reminder', $2, $3, $4)
+      `,
+      [
+        userId,
+        "飯局即將開始",
+        `你的飯局「${party.title}」將在 30 分鐘內開始，時間：${party.party_time}。`,
+        party.id,
+      ]
+    );
+  }
+}
+
 /**
  * 取得指定使用者通知
  * GET /api/notifications/:userId
@@ -33,6 +106,8 @@ router.get("/:userId", async (req, res) => {
     if (userCheck.rows.length === 0) {
       return res.status(404).json({ message: "找不到使用者" });
     }
+
+    await createUpcomingPartyReminders(userId);
 
     const result = await pool.query(
       `

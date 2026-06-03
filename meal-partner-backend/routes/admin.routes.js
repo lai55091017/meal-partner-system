@@ -442,29 +442,45 @@ router.post("/parties/:id/cancel", async (req, res) => {
  * DELETE /api/admin/parties/:id
  */
 router.delete("/parties/:id", async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const admin = await assertAdmin(req, res);
     if (!admin) return;
 
     const { id } = req.params;
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+
+    const result = await client.query(
       `
-      DELETE FROM parties
+      UPDATE parties
+      SET status = 'deleted'
       WHERE id = $1
+        AND status <> 'deleted'
       RETURNING *
       `,
       [id]
     );
 
     if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: "找不到飯局" });
     }
 
-    res.json({ message: "飯局已刪除" });
+    await client.query("DELETE FROM chat_messages WHERE party_id = $1", [id]);
+    await client.query("DELETE FROM party_members WHERE party_id = $1", [id]);
+    await client.query("UPDATE notifications SET party_id = NULL WHERE party_id = $1", [id]);
+
+    await client.query("COMMIT");
+
+    res.json({ message: "飯局紀錄已刪除，歷史評價已保留" });
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("管理員刪除飯局失敗：", error);
     res.status(500).json({ message: "管理員刪除飯局失敗", error: error.message });
+  } finally {
+    client.release();
   }
 });
 

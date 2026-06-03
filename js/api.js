@@ -80,10 +80,10 @@ const api = {
         });
     },
 
-    cancelParty(partyId, userId) {
+    cancelParty(partyId, userId, cancelReason = "") {
         return requestApi(`/parties/${partyId}/cancel`, {
             method: "POST",
-            body: JSON.stringify({ userId }),
+            body: JSON.stringify({ userId, cancelReason }),
         });
     },
 
