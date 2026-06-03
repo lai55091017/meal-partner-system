@@ -164,6 +164,12 @@
     const profileStudentId = $("#profile-student-id");
     const profileDepartment = $("#profile-department");
     const profileBio = $("#profile-bio");
+    const dietCustomOptions = $("#diet-custom-options");
+    const cuisineCustomOptions = $("#cuisine-custom-options");
+    const dietCustomInput = $("#diet-custom-input");
+    const cuisineCustomInput = $("#cuisine-custom-input");
+    const dietAddBtn = $("#diet-add-btn");
+    const cuisineAddBtn = $("#cuisine-add-btn");
     const hostPreviewName = $("#host-preview-name");
     const hostPreviewDiet = $("#host-preview-diet");
     const hostPreviewBio = $("#host-preview-bio");
@@ -185,6 +191,10 @@
     const adminPartyList = $("#admin-party-list");
     const adminChatList = $("#admin-chat-list");
     const createRestaurantSelect = $("#create-restaurant");
+    const createRestaurantSearch = $("#create-restaurant-search");
+    const restaurantSelectCombo = $("#restaurant-select-combo");
+    const restaurantSelectToggle = $("#restaurant-select-toggle");
+    const restaurantSelectList = $("#restaurant-select-list");
     const createRestaurantInfo = $("#create-restaurant-info");
     const createRestaurantName = $("#create-restaurant-name");
     const createRestaurantCategory = $("#create-restaurant-category");
@@ -253,6 +263,11 @@
 
     // 正式版不再顯示範例飯局 / 範例聊天室；只顯示資料庫或使用者實際建立、加入的資料。
     const DEMO_PARTY_IDS = new Set(["default-my-party", "other-demo-party"]);
+
+    const DEFAULT_PREFERENCE_VALUES = {
+        diet: ["素食", "不吃辣", "可吃辣", "不吃牛"],
+        cuisine: ["中式", "日式", "速食", "咖啡廳"],
+    };
 
     function isDemoPartyId(partyId) {
         return DEMO_PARTY_IDS.has(String(partyId));
@@ -771,6 +786,23 @@
         return `${match[1]}/${match[2]}/${match[3]}`;
     }
 
+    function getCreatePartyDateTime() {
+        const dateValue = createDateInput?.value || "";
+        const timeValue = createTimeSelect?.value || "";
+        const match = String(dateValue).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match || !timeValue) return null;
+
+        const [hour, minute] = String(timeValue).split(":").map(Number);
+        if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), hour, minute, 0, 0);
+    }
+
+    function isCreatePartyDateTimeFuture() {
+        const partyDateTime = getCreatePartyDateTime();
+        return Boolean(partyDateTime && partyDateTime.getTime() > Date.now());
+    }
+
     function getCreatePartyTimeValue() {
         const dateValue = createDateInput?.value || "";
         const timeValue = createTimeSelect?.value || "";
@@ -784,13 +816,32 @@
 
         const mealType = createMealTypeSelect?.value || "午餐";
         const options = MEAL_TIME_OPTIONS[mealType] || MEAL_TIME_OPTIONS["其他"];
-        const fallbackTime = preferredTime && options.includes(preferredTime)
-            ? preferredTime
-            : options.includes("18:30")
-                ? "18:30"
-                : options[Math.floor(options.length / 2)] || "";
+        const selectedDate = createDateInput?.value || getTodayDateValue();
+        const today = getTodayDateValue();
+        const now = new Date();
+        const availableOptions = selectedDate === today
+            ? options.filter((time) => {
+                const [hour, minute] = time.split(":").map(Number);
+                const optionDateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
+                return optionDateTime.getTime() > now.getTime();
+            })
+            : options;
 
-        createTimeSelect.innerHTML = options.map((time) => (
+        if (availableOptions.length === 0) {
+            createTimeSelect.innerHTML = '<option value="">今日此餐期已無可建立時間</option>';
+            createTimeSelect.disabled = true;
+            return;
+        }
+
+        createTimeSelect.disabled = false;
+
+        const fallbackTime = preferredTime && availableOptions.includes(preferredTime)
+            ? preferredTime
+            : availableOptions.includes("18:30")
+                ? "18:30"
+                : availableOptions[0] || "";
+
+        createTimeSelect.innerHTML = availableOptions.map((time) => (
             `<option value="${time}"${time === fallbackTime ? " selected" : ""}>${time}</option>`
         )).join("");
     }
@@ -799,7 +850,7 @@
         const today = getTodayDateValue();
         if (createDateInput) {
             createDateInput.min = today;
-            if (!createDateInput.value) createDateInput.value = today;
+            if (!createDateInput.value || createDateInput.value < today) createDateInput.value = today;
         }
         updateCreateTimeOptions(createTimeSelect?.value || "");
     }
@@ -1060,14 +1111,167 @@
         });
     }
 
-    function setCheckedValues(name, values) {
+    function normalizePreferenceValue(value) {
+        return String(value || "").trim();
+    }
+
+    function getPreferenceCustomContainer(name) {
+        return name === "diet" ? dietCustomOptions : cuisineCustomOptions;
+    }
+
+    function getPreferenceAddInput(name) {
+        return name === "diet" ? dietCustomInput : cuisineCustomInput;
+    }
+
+    function createPreferenceChip(name, value, options = {}) {
+        const normalizedValue = normalizePreferenceValue(value);
+        if (!normalizedValue) return null;
+
+        const { isCustom = false, checked = false } = options;
+        const label = document.createElement("label");
+        label.className = `preference-chip${isCustom ? " preference-chip--custom" : ""}`;
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.name = name;
+        input.value = normalizedValue;
+        input.checked = checked;
+        input.disabled = !profileForm?.classList.contains("profile-form--editing");
+
+        const text = document.createElement("span");
+        text.textContent = normalizedValue;
+
+        label.append(input, text);
+
+        if (isCustom) {
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "preference-chip-remove";
+            removeBtn.textContent = "×";
+            removeBtn.setAttribute("aria-label", `移除 ${normalizedValue}`);
+            removeBtn.disabled = input.disabled;
+            removeBtn.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                label.remove();
+                updatePreferenceEditState(profileForm?.classList.contains("profile-form--editing"));
+                updateHostPreview(collectProfileData());
+            });
+            label.appendChild(removeBtn);
+        }
+
+        input.addEventListener("change", () => {
+            updatePreferenceEditState(profileForm?.classList.contains("profile-form--editing"));
+            updateHostPreview(collectProfileData());
+        });
+
+        return label;
+    }
+
+    function renderCustomPreferenceValues(name, values = []) {
+        const container = getPreferenceCustomContainer(name);
+        if (!container) return;
+
+        container.innerHTML = "";
+
+        const defaults = new Set(DEFAULT_PREFERENCE_VALUES[name] || []);
+        const uniqueCustomValues = Array.from(new Set(
+            values
+                .map(normalizePreferenceValue)
+                .filter((value) => value && !defaults.has(value))
+        ));
+
+        uniqueCustomValues.forEach((value) => {
+            const chip = createPreferenceChip(name, value, { isCustom: true, checked: true });
+            if (chip) container.appendChild(chip);
+        });
+    }
+
+    function setPreferenceValues(name, values) {
+        const normalizedValues = values.map(normalizePreferenceValue).filter(Boolean);
+        renderCustomPreferenceValues(name, normalizedValues);
+
         $$(`input[name="${name}"]`, profileForm).forEach((input) => {
-            input.checked = values.includes(input.value);
+            input.checked = normalizedValues.includes(input.value);
+        });
+
+        updatePreferenceViewVisibility(profileForm?.classList.contains("profile-form--editing"));
+    }
+
+    function updatePreferenceViewVisibility(isEditing = false) {
+        $$(".preference-chip", profileForm).forEach((chip) => {
+            const input = chip.querySelector('input[type="checkbox"]');
+            if (!input) return;
+
+            const shouldHide = !isEditing && !input.checked;
+            chip.hidden = shouldHide;
         });
     }
 
     function getCheckedValues(name) {
-        return $$(`input[name="${name}"]:checked`, profileForm).map((input) => input.value);
+        return Array.from(new Set(
+            $$(`input[name="${name}"]:checked`, profileForm)
+                .map((input) => normalizePreferenceValue(input.value))
+                .filter(Boolean)
+        ));
+    }
+
+    function updatePreferenceEditState(isEditing) {
+        $$('input[type="checkbox"]', profileForm).forEach((input) => {
+            input.disabled = !isEditing;
+        });
+
+        [dietCustomInput, cuisineCustomInput, dietAddBtn, cuisineAddBtn].forEach((element) => {
+            if (!element) return;
+            element.disabled = !isEditing;
+        });
+
+        $$(".preference-chip-remove", profileForm).forEach((button) => {
+            button.disabled = !isEditing;
+        });
+
+        $$(".preference-group", profileForm).forEach((group) => {
+            group.classList.toggle("preference-group--editing", isEditing);
+        });
+
+        updatePreferenceViewVisibility(isEditing);
+        updatePreferenceEmptyState();
+    }
+
+    function updatePreferenceEmptyState() {
+        $$(".preference-group", profileForm).forEach((group) => {
+            const visibleCheckedChips = $$(".preference-chip", group).filter((chip) => {
+                const input = chip.querySelector('input[type="checkbox"]');
+                return input?.checked && chip.hidden !== true;
+            });
+
+            group.classList.toggle("preference-group--empty-view", !group.classList.contains("preference-group--editing") && visibleCheckedChips.length === 0);
+        });
+    }
+
+    function addCustomPreference(name) {
+        const input = getPreferenceAddInput(name);
+        if (!input || input.disabled) return;
+
+        const value = normalizePreferenceValue(input.value);
+        if (!value) return;
+
+        const existingInput = $$(`input[name="${name}"]`, profileForm).find((item) => item.value === value);
+        if (existingInput) {
+            existingInput.checked = true;
+            input.value = "";
+            updateHostPreview(collectProfileData());
+            return;
+        }
+
+        const container = getPreferenceCustomContainer(name);
+        const chip = createPreferenceChip(name, value, { isCustom: true, checked: true });
+        if (container && chip) {
+            container.appendChild(chip);
+            input.value = "";
+            updatePreferenceEditState(true);
+            updateHostPreview(collectProfileData());
+        }
     }
 
     function fileToDataUrl(file) {
@@ -1163,8 +1367,9 @@
         if (profileDepartment) profileDepartment.value = profile.department;
         if (profileBio) profileBio.value = profile.bio;
 
-        setCheckedValues("diet", profile.diet || []);
-        setCheckedValues("cuisine", profile.cuisine || []);
+        setPreferenceValues("diet", profile.diet || []);
+        setPreferenceValues("cuisine", profile.cuisine || []);
+        updatePreferenceEditState(profileForm?.classList.contains("profile-form--editing"));
 
         if (profileAvatarPreview && profileAvatarIcon) {
             const avatarPreviewUrl = pendingProfileAvatarPreview || getImageUrl(profile.avatar);
@@ -1205,9 +1410,7 @@
             field.readOnly = !isEditing;
         });
 
-        $$('input[type="checkbox"]', profileForm).forEach((input) => {
-            input.disabled = !isEditing;
-        });
+        updatePreferenceEditState(isEditing);
 
         if (profileAvatarFile) profileAvatarFile.disabled = !isEditing;
         if (profileEditBtn) profileEditBtn.hidden = isEditing;
@@ -1527,6 +1730,126 @@
         return restaurantOptions.find((restaurant) => String(restaurant.id) === String(selectedId)) || null;
     }
 
+    function getRestaurantOptionLabel(restaurant) {
+        return `${restaurant.name}｜${restaurant.category}｜${restaurant.priceLevel}`;
+    }
+
+    function getRestaurantSearchText() {
+        return createRestaurantSearch?.value.trim().toLowerCase() || "";
+    }
+
+    function getFilteredRestaurantOptions() {
+        const keyword = getRestaurantSearchText();
+        if (!keyword) return restaurantOptions;
+
+        return restaurantOptions.filter((restaurant) => {
+            const searchableText = [
+                restaurant.name,
+                restaurant.category,
+                restaurant.priceLevel,
+                restaurant.openingHours,
+                restaurant.address,
+                restaurant.feature,
+            ].join(" ").toLowerCase();
+
+            return searchableText.includes(keyword);
+        });
+    }
+
+    function setRestaurantDropdownOpen(isOpen) {
+        if (!restaurantSelectList || !createRestaurantSearch) return;
+
+        restaurantSelectList.hidden = !isOpen;
+        createRestaurantSearch.setAttribute("aria-expanded", String(isOpen));
+        restaurantSelectCombo?.classList.toggle("restaurant-select-combo--open", isOpen);
+
+        if (isOpen) renderRestaurantSelectList();
+    }
+
+    function renderRestaurantSelectList() {
+        if (!restaurantSelectList) return;
+
+        const filteredRestaurants = getFilteredRestaurantOptions();
+        restaurantSelectList.innerHTML = "";
+
+        if (!filteredRestaurants.length) {
+            const emptyItem = document.createElement("li");
+            emptyItem.className = "restaurant-select-empty";
+            emptyItem.textContent = getRestaurantSearchText()
+                ? "找不到符合的餐廳"
+                : "目前沒有餐廳資料";
+            restaurantSelectList.appendChild(emptyItem);
+        } else {
+            filteredRestaurants.forEach((restaurant) => {
+                const item = document.createElement("li");
+                item.className = "restaurant-select-option";
+                item.setAttribute("role", "option");
+                item.dataset.restaurantId = String(restaurant.id);
+                item.textContent = getRestaurantOptionLabel(restaurant);
+
+                if (createRestaurantSelect?.value === String(restaurant.id)) {
+                    item.classList.add("restaurant-select-option--active");
+                    item.setAttribute("aria-selected", "true");
+                }
+
+                item.addEventListener("mousedown", (event) => {
+                    event.preventDefault();
+                    selectRestaurantById(restaurant.id);
+                });
+
+                restaurantSelectList.appendChild(item);
+            });
+        }
+
+        const customItem = document.createElement("li");
+        customItem.className = "restaurant-select-option restaurant-select-option--custom";
+        customItem.setAttribute("role", "option");
+        customItem.dataset.restaurantId = CUSTOM_RESTAURANT_VALUE;
+        customItem.textContent = "＋ 新增其他餐廳";
+        customItem.addEventListener("mousedown", (event) => {
+            event.preventDefault();
+            setCustomRestaurantMode(true);
+            setRestaurantDropdownOpen(false);
+        });
+        restaurantSelectList.appendChild(customItem);
+    }
+
+    function selectRestaurantById(restaurantId) {
+        if (!createRestaurantSelect) return;
+
+        createRestaurantSelect.value = String(restaurantId || "");
+        const restaurant = getSelectedRestaurant();
+
+        if (createRestaurantSearch) {
+            createRestaurantSearch.value = restaurant ? getRestaurantOptionLabel(restaurant) : "";
+        }
+
+        updateSelectedRestaurantInfo();
+        setRestaurantDropdownOpen(false);
+    }
+
+    function syncRestaurantSelectFromInput() {
+        if (!createRestaurantSelect || !createRestaurantSearch) return false;
+
+        const value = createRestaurantSearch.value.trim();
+        const matchedRestaurant = restaurantOptions.find((restaurant) => (
+            restaurant.name === value ||
+            getRestaurantOptionLabel(restaurant) === value
+        ));
+
+        if (matchedRestaurant) {
+            selectRestaurantById(matchedRestaurant.id);
+            return true;
+        }
+
+        if (!value) {
+            createRestaurantSelect.value = "";
+            updateSelectedRestaurantInfo();
+        }
+
+        return false;
+    }
+
     function getCustomRestaurantData() {
         return {
             name: customRestaurantName?.value.trim() || "",
@@ -1566,7 +1889,7 @@
         restaurantOptions.forEach((restaurant) => {
             const option = document.createElement("option");
             option.value = String(restaurant.id);
-            option.textContent = `${restaurant.name}｜${restaurant.category}｜${restaurant.priceLevel}`;
+            option.textContent = getRestaurantOptionLabel(restaurant);
             createRestaurantSelect.appendChild(option);
         });
 
@@ -1577,8 +1900,16 @@
 
         if (currentValue === CUSTOM_RESTAURANT_VALUE || (currentValue && restaurantOptions.some((restaurant) => String(restaurant.id) === String(currentValue)))) {
             createRestaurantSelect.value = currentValue;
+        } else {
+            createRestaurantSelect.value = "";
         }
 
+        const selectedRestaurant = getSelectedRestaurant();
+        if (createRestaurantSearch && selectedRestaurant) {
+            createRestaurantSearch.value = getRestaurantOptionLabel(selectedRestaurant);
+        }
+
+        renderRestaurantSelectList();
         updateSelectedRestaurantInfo();
         updateRestaurantFilterOptions();
     }
@@ -1632,6 +1963,9 @@
         const storeInput = $("#create-store");
 
         if (storeInput) storeInput.value = restaurant?.name || "";
+        if (createRestaurantSearch && restaurant && document.activeElement !== createRestaurantSearch) {
+            createRestaurantSearch.value = getRestaurantOptionLabel(restaurant);
+        }
         if (createNewRestaurantToggle) {
             createNewRestaurantToggle.textContent = customMode ? "取消新增餐廳" : "＋ 新增其他餐廳";
         }
@@ -1892,6 +2226,7 @@
         if (!partyData.mealType) return "請選擇餐期";
         if (!createDateInput?.value) return "請選擇日期";
         if (!partyData.partyTime) return "請選擇時間";
+        if (!isCreatePartyDateTimeFuture()) return "只能建立尚未到達時間點的飯局";
         if (!partyData.maxPeople || partyData.maxPeople < 2) return "人數上限至少需要 2 人";
 
         return "";
@@ -2431,9 +2766,15 @@
             const reviewed = hasReviewedParty(party.id);
             const canRate = canCurrentUserRateParty(party);
             const hasTargets = getRatingTargets(party).length > 0;
-            partyRateBtn.disabled = status.key === "canceled" || !ended || reviewed || !canRate || !hasTargets;
-            partyRateBtn.textContent = reviewed ? "已評價" : ended ? "評價" : "尚未結束";
-            partyRateBtn.title = !canRate ? "只有本場飯局成員可以評價" : reviewed ? "同一場飯局只能評價一次" : ended ? "可以評價本場飯局成員" : getPartyEndHint(party);
+            partyRateBtn.disabled = status.key === "canceled" || reviewed || !canRate || !hasTargets;
+            partyRateBtn.textContent = reviewed ? "已評價" : "評價";
+            partyRateBtn.title = !canRate
+                ? "只有本場飯局成員可以評價"
+                : reviewed
+                    ? "同一場飯局只能評價一次"
+                    : ended
+                        ? "可以評價並送出本場飯局成員評價"
+                        : "可以先進入評價頁填寫，飯局結束後才能上傳";
         }
     }
 
@@ -4265,10 +4606,7 @@
 
         if (ratingPartyTitle) ratingPartyTitle.textContent = `評價「${party.partyName}」`;
 
-        if (!isPartyEnded(party)) {
-            ratingMessage.textContent = getPartyEndHint(party);
-            ratingSubmitBtn.disabled = true;
-        } else if (!canRate) {
+        if (!canRate) {
             ratingMessage.textContent = "只有本場飯局成員可以評價。";
             ratingSubmitBtn.disabled = true;
         } else if (reviewed) {
@@ -4276,6 +4614,9 @@
             ratingSubmitBtn.disabled = true;
         } else if (!targets.length) {
             ratingMessage.textContent = "目前沒有其他成員可以評價。";
+            ratingSubmitBtn.disabled = true;
+        } else if (!isPartyEnded(party)) {
+            ratingMessage.textContent = `可以先填寫評分與留言；${getPartyEndHint(party)}，飯局結束後才能上傳。`;
             ratingSubmitBtn.disabled = true;
         } else {
             ratingMessage.textContent = "請對本場飯局成員給予星等與留言。";
@@ -4455,11 +4796,6 @@
             return;
         }
 
-        if (!isPartyEnded(party)) {
-            alert("飯局結束後才能評價。" + getPartyEndHint(party));
-            return;
-        }
-
         const reviewed = await refreshRatingReviewedCache(party.id);
         if (reviewed) {
             alert("你已經評價過這場飯局，同一場飯局只能評價一次。 ");
@@ -4534,6 +4870,31 @@
         });
 
         adminRefreshBtn?.addEventListener("click", loadAdminDashboard);
+        createRestaurantSearch?.addEventListener("focus", () => setRestaurantDropdownOpen(true));
+        createRestaurantSearch?.addEventListener("click", () => setRestaurantDropdownOpen(true));
+        createRestaurantSearch?.addEventListener("input", () => {
+            createRestaurantSelect.value = "";
+            renderRestaurantSelectList();
+            setRestaurantDropdownOpen(true);
+            updateSelectedRestaurantInfo();
+        });
+        createRestaurantSearch?.addEventListener("change", syncRestaurantSelectFromInput);
+        createRestaurantSearch?.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") setRestaurantDropdownOpen(false);
+            if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setRestaurantDropdownOpen(true);
+            }
+        });
+        restaurantSelectToggle?.addEventListener("click", () => {
+            setRestaurantDropdownOpen(restaurantSelectList?.hidden !== false);
+            createRestaurantSearch?.focus();
+        });
+        document.addEventListener("click", (event) => {
+            if (!restaurantSelectCombo?.contains(event.target)) {
+                setRestaurantDropdownOpen(false);
+            }
+        });
         createRestaurantSelect?.addEventListener("change", updateSelectedRestaurantInfo);
         createNewRestaurantToggle?.addEventListener("click", () => {
             setCustomRestaurantMode(!isCustomRestaurantMode());
@@ -4588,8 +4949,8 @@
             });
         });
 
-        createMealTypeSelect?.addEventListener("change", () => updateCreateTimeOptions());
-        createDateInput?.addEventListener("change", initCreateScheduleFields);
+        createMealTypeSelect?.addEventListener("change", () => updateCreateTimeOptions(createTimeSelect?.value || ""));
+        createDateInput?.addEventListener("change", () => updateCreateTimeOptions(createTimeSelect?.value || ""));
 
         searchInput?.addEventListener("input", renderHomeParties);
         mealTypeFilter?.addEventListener("change", renderHomeParties);
@@ -4784,8 +5145,7 @@
                         restaurantOptions.push(createdRestaurant);
                     }
                     renderRestaurantSelect();
-                    if (createRestaurantSelect) createRestaurantSelect.value = createdRestaurant.id;
-                    updateSelectedRestaurantInfo();
+                    selectRestaurantById(createdRestaurant.id);
                 }
 
                 const coverFile = createCoverFile?.files?.[0];
@@ -4803,6 +5163,8 @@
                 );
 
                 createForm.reset();
+                if (createRestaurantSearch) createRestaurantSearch.value = "";
+                renderRestaurantSelect();
                 initCreateScheduleFields();
                 resetCustomRestaurantForm();
                 updateSelectedRestaurantInfo();
@@ -4825,6 +5187,23 @@
         profileSaveBtn?.addEventListener("click", saveProfileToBackend);
 
         profileForm?.addEventListener("submit", saveProfileToBackend);
+
+        dietAddBtn?.addEventListener("click", () => addCustomPreference("diet"));
+        cuisineAddBtn?.addEventListener("click", () => addCustomPreference("cuisine"));
+
+        dietCustomInput?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addCustomPreference("diet");
+            }
+        });
+
+        cuisineCustomInput?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addCustomPreference("cuisine");
+            }
+        });
 
         profileAvatarFile?.addEventListener("change", async (event) => {
             event?.preventDefault?.();

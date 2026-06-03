@@ -776,10 +776,38 @@
                 >餐廳選擇</label
               >
               <div class="create-restaurant-control">
+                <div class="restaurant-select-combo" id="restaurant-select-combo">
+                  <input
+                    type="text"
+                    class="create-input restaurant-select-input"
+                    id="create-restaurant-search"
+                    placeholder="請選擇餐廳"
+                    autocomplete="off"
+                    aria-label="搜尋或選擇餐廳"
+                    aria-expanded="false"
+                    aria-controls="restaurant-select-list"
+                  />
+                  <button
+                    type="button"
+                    class="restaurant-select-toggle"
+                    id="restaurant-select-toggle"
+                    aria-label="展開餐廳選單"
+                  >
+                    ▾
+                  </button>
+                  <ul
+                    class="restaurant-select-list"
+                    id="restaurant-select-list"
+                    role="listbox"
+                    hidden
+                  ></ul>
+                </div>
                 <select
-                  class="create-input create-select"
+                  class="create-input create-select restaurant-native-select"
                   id="create-restaurant"
                   name="restaurantId"
+                  aria-hidden="true"
+                  tabindex="-1"
                 >
                   <option value="">讀取餐廳清單中...</option>
                 </select>
@@ -1112,75 +1140,115 @@
               <h2 id="profile-preference-title" class="profile-panel-title">
                 飲食偏好
               </h2>
-              <div class="preference-group">
+              <div class="preference-group" data-preference-group="diet">
                 <p class="preference-title">飲食習慣</p>
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="diet"
-                    value="素食"
+                <div class="preference-chip-list" id="diet-chip-list">
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="diet"
+                      value="素食"
+                      disabled
+                    /><span>素食</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="diet"
+                      value="不吃辣"
+                      disabled
+                    /><span>不吃辣</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="diet"
+                      value="可吃辣"
+                      disabled
+                    /><span>可吃辣</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="diet"
+                      value="不吃牛"
+                      disabled
+                    /><span>不吃牛</span></label
+                  >
+                  <span id="diet-custom-options" class="preference-custom-options"></span>
+                </div>
+                <div class="preference-add-row">
+                  <input
+                    type="text"
+                    class="preference-add-input"
+                    id="diet-custom-input"
+                    placeholder="新增飲食習慣，例如：少油、海鮮過敏"
                     disabled
-                  />素食</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="diet"
-                    value="不吃辣"
+                  />
+                  <button
+                    type="button"
+                    class="preference-add-btn"
+                    id="diet-add-btn"
                     disabled
-                  />不吃辣</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="diet"
-                    value="可吃辣"
-                    disabled
-                  />可吃辣</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="diet"
-                    value="不吃牛"
-                    disabled
-                  />不吃牛</label
-                >
+                  >
+                    新增
+                  </button>
+                </div>
               </div>
-              <div class="preference-group">
+              <div class="preference-group" data-preference-group="cuisine">
                 <p class="preference-title">喜歡類型</p>
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="cuisine"
-                    value="中式"
+                <div class="preference-chip-list" id="cuisine-chip-list">
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="cuisine"
+                      value="中式"
+                      disabled
+                    /><span>中式</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="cuisine"
+                      value="日式"
+                      disabled
+                    /><span>日式</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="cuisine"
+                      value="速食"
+                      disabled
+                    /><span>速食</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="cuisine"
+                      value="咖啡廳"
+                      disabled
+                    /><span>咖啡廳</span></label
+                  >
+                  <span id="cuisine-custom-options" class="preference-custom-options"></span>
+                </div>
+                <div class="preference-add-row">
+                  <input
+                    type="text"
+                    class="preference-add-input"
+                    id="cuisine-custom-input"
+                    placeholder="新增喜歡類型，例如：韓式、火鍋"
                     disabled
-                  />中式</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="cuisine"
-                    value="日式"
+                  />
+                  <button
+                    type="button"
+                    class="preference-add-btn"
+                    id="cuisine-add-btn"
                     disabled
-                  />日式</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="cuisine"
-                    value="速食"
-                    disabled
-                  />速食</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="cuisine"
-                    value="咖啡廳"
-                    disabled
-                  />咖啡廳</label
-                >
+                  >
+                    新增
+                  </button>
+                </div>
               </div>
             </section>
 
