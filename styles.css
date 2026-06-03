@@ -3104,6 +3104,116 @@ main[hidden] {
   color: var(--white);
 }
 
+.chat-message--recalled .chat-message-bubble {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.72);
+  font-style: italic;
+}
+
+.chat-message--mine.chat-message--recalled .chat-message-bubble {
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.chat-message-edited {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: normal;
+}
+
+.chat-message--mine .chat-message-edited {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.chat-message-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.chat-message-edit-input {
+  width: 100%;
+  min-width: 200px;
+  min-height: 64px;
+  max-height: 140px;
+  padding: 10px 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text-on-light);
+  font-size: 0.86rem;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.chat-message-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.chat-message-edit-confirm,
+.chat-message-edit-cancel {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat-message-edit-confirm {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.chat-message-edit-cancel {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.chat-context-menu {
+  position: fixed;
+  z-index: 120;
+  min-width: 148px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #d8d4cc;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.chat-context-menu__item {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-on-light);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.chat-context-menu__item:hover,
+.chat-context-menu__item:focus-visible {
+  background: #f3efe8;
+}
+
+.chat-context-menu__item[data-action="recall"] {
+  color: #a85a5a;
+}
+
 .chat-form {
   display: flex;
   gap: 10px;
@@ -8185,3 +8295,485 @@ body {
     padding-right: 72px !important;
   }
 }
+
+
+/* ======================================================
+   STUDENT CARD VERIFICATION PATCH
+   註冊學生證上傳與後台人工審核樣式
+   ====================================================== */
+.login-file-input {
+  padding: 8px 12px;
+  height: auto;
+  min-height: 42px;
+}
+
+.login-file-input::file-selector-button {
+  margin-right: 10px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: #e8e4dc;
+  color: var(--dark);
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-field-hint {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.admin-verify-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.admin-verify-badge--pending {
+  background: rgba(164, 138, 84, 0.18);
+  color: #8a6b24;
+}
+
+.admin-verify-badge--approved {
+  background: rgba(88, 137, 99, 0.18);
+  color: #426c4c;
+}
+
+.admin-verify-badge--rejected {
+  background: rgba(168, 90, 90, 0.18);
+  color: #974848;
+}
+
+.admin-student-card-link {
+  display: inline-flex;
+  margin-top: 5px;
+  color: var(--accent-blue);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.admin-student-card-link:hover {
+  text-decoration: underline;
+}
+
+.admin-small-btn {
+  min-height: 28px;
+  padding: 5px 9px;
+  margin: 2px 4px 2px 0;
+  font-size: 0.72rem;
+}
+
+.admin-approve-btn {
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent-blue);
+  color: var(--white);
+  font-family: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-approve-btn:disabled,
+.admin-danger-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (min-width: 768px) {
+  .admin-table th:nth-child(4),
+  .admin-table td:nth-child(4) {
+    min-width: 130px;
+  }
+}
+
+
+/* ======================================================
+   STUDENT CARD ADMIN-ONLY COLOR PATCH
+   只限定後台「使用者管理 > 學生證審核」欄位，不影響其他頁面與其他按鈕配色。
+   ====================================================== */
+#admin-user-list .admin-verify-badge {
+  font-weight: 900 !important;
+  border: 1px solid transparent !important;
+}
+
+#admin-user-list .admin-verify-badge--pending {
+  background: rgba(255, 194, 82, 0.22) !important;
+  color: #f3b63f !important;
+  border-color: rgba(255, 194, 82, 0.42) !important;
+}
+
+#admin-user-list .admin-verify-badge--approved {
+  background: rgba(91, 214, 132, 0.2) !important;
+  color: #5bd684 !important;
+  border-color: rgba(91, 214, 132, 0.38) !important;
+}
+
+#admin-user-list .admin-verify-badge--rejected {
+  background: rgba(255, 118, 118, 0.2) !important;
+  color: #ff7676 !important;
+  border-color: rgba(255, 118, 118, 0.4) !important;
+}
+
+#admin-user-list .admin-student-card-link {
+  color: #7eb6ff !important;
+  font-weight: 900 !important;
+}
+
+#admin-user-list .admin-student-card-link:hover {
+  color: #a7ceff !important;
+}
+
+
+/* ======================================================
+   STUDENT CARD ADMIN ACTION BUTTON PATCH
+   只限定後台使用者管理的學生證審核操作按鈕，不影響其他功能配色。
+   ====================================================== */
+#admin-user-list .admin-small-btn {
+  min-height: 30px !important;
+  padding: 6px 12px !important;
+  margin: 2px 4px 2px 0 !important;
+  border-radius: 999px !important;
+  border: 0 !important;
+  font-size: 0.72rem !important;
+  font-family: inherit !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+
+#admin-user-list .admin-approve-btn {
+  background: var(--accent-blue) !important;
+  color: var(--white) !important;
+  box-shadow: none !important;
+}
+
+#admin-user-list .admin-approve-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+#admin-user-list .admin-approve-btn:disabled,
+#admin-user-list .admin-danger-btn:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+
+/* ======================================================
+   CREATE PARTY DATE / MEAL TIME PATCH
+   新增飯局日期欄位與餐期時間選項顯示。
+   ====================================================== */
+.create-input[type="date"] {
+  color-scheme: dark;
+}
+
+.create-input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.86;
+}
+
+
+/* ======================================================
+   NOTIFICATION RED DOT PATCH
+   通知有未讀內容時，底部通知按鈕顯示紅點；進入通知頁後消失。
+   ====================================================== */
+.nav-item[data-nav="notifications"] {
+  position: relative;
+}
+
+.nav-item[data-nav="notifications"] .nav-icon {
+  position: relative;
+}
+
+.nav-item--has-unread[data-nav="notifications"] .nav-icon::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  border: 2px solid var(--dark);
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.22);
+}
+
+@media (min-width: 768px) {
+  .nav-item--has-unread[data-nav="notifications"] .nav-icon::after {
+    top: -2px;
+    right: -2px;
+  }
+}
+
+/* ======================================================
+   RESTAURANT SEARCH SELECT PATCH
+   餐廳欄位保留點擊下拉選單，並加入可輸入搜尋功能。
+   ====================================================== */
+.restaurant-select-combo {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.restaurant-select-input {
+  width: 100%;
+  padding-right: 44px;
+  cursor: text;
+}
+
+.restaurant-select-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--white);
+  font-size: 1rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.restaurant-select-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.restaurant-select-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 80;
+  max-height: 260px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 6px 0;
+  border: 1.5px solid var(--white);
+  border-radius: 14px;
+  background: #303030;
+  color: var(--white);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.restaurant-select-list[hidden] {
+  display: none !important;
+}
+
+.restaurant-select-option,
+.restaurant-select-empty {
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.restaurant-select-option {
+  cursor: pointer;
+}
+
+.restaurant-select-option:hover,
+.restaurant-select-option--active {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.restaurant-select-option--custom {
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  font-weight: 700;
+}
+
+.restaurant-select-empty {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.restaurant-native-select {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+@media (max-width: 767px) {
+  .restaurant-select-list {
+    max-height: 220px;
+  }
+}
+
+/* ======================================================
+   PROFILE PREFERENCE CHIP PATCH
+   飲食偏好改為點選式標籤，並支援自行新增內容。
+   ====================================================== */
+.preference-chip-list {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preference-custom-options {
+  display: contents;
+}
+
+.preference-chip {
+  position: relative;
+  min-height: 34px;
+  padding: 7px 13px;
+  gap: 6px;
+  background: transparent;
+  transition:
+    background 0.16s,
+    border-color 0.16s,
+    transform 0.12s;
+}
+
+.preference-chip input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preference-chip:has(input:checked) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--white);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  font-weight: 800;
+}
+
+.preference-chip:not(:has(input:disabled)):hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.preference-chip:has(input:disabled) {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.preference-chip:has(input:checked:disabled) {
+  opacity: 1;
+}
+
+.preference-chip--custom {
+  border-style: dashed;
+}
+
+.preference-chip-remove {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--white);
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.preference-chip-remove:disabled {
+  display: none;
+}
+
+.preference-add-row {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.preference-add-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--white);
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.preference-add-input::placeholder {
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.preference-add-input:focus {
+  border-color: var(--white);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.preference-add-input:disabled {
+  display: none;
+}
+
+.preference-add-btn {
+  min-width: 58px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--white);
+  color: var(--dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.preference-add-btn:disabled {
+  display: none;
+}
+
+.preference-group--editing .preference-title::after {
+  content: " 可點選或新增";
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .preference-add-row {
+    flex-direction: column;
+  }
+
+  .preference-add-btn {
+    width: 100%;
+  }
+}
+
+/* ======================================================
+   PROFILE PREFERENCE VIEW MODE PATCH
+   編輯完成後只顯示已選擇的飲食偏好標籤；再次編輯時顯示全部可選標籤。
+   ====================================================== */
+.profile-form:not(.profile-form--editing) .preference-chip[hidden] {
+  display: none !important;
+}
+
+.profile-form:not(.profile-form--editing) .preference-group--empty-view .preference-chip-list::after {
+  content: "尚未選擇";
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 0.78rem;
+  line-height: 34px;
+}
+
+.profile-form.profile-form--editing .preference-chip {
+  display: inline-flex;
+}
+

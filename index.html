@@ -192,6 +192,22 @@
                 />
               </div>
 
+              <div class="login-row">
+                <label class="login-label" for="register-student-card"
+                  >學生證照片</label
+                >
+                <input
+                  type="file"
+                  class="login-input login-file-input"
+                  id="register-student-card"
+                  name="studentCard"
+                  accept="image/*"
+                />
+                <p class="login-field-hint">
+                  請上傳清楚學生證或學籍證明，需看得到姓名、學校或系所資訊。
+                </p>
+              </div>
+
               <p
                 id="register-message"
                 class="login-message register-message"
@@ -274,6 +290,7 @@
                   <option value="全部">全部餐期</option>
                   <option value="早餐">早餐</option>
                   <option value="午餐">午餐</option>
+                  <option value="下午茶">下午茶</option>
                   <option value="晚餐">晚餐</option>
                   <option value="宵夜">宵夜</option>
                 </select>
@@ -474,6 +491,30 @@
               ></textarea>
               <button type="submit" class="chat-send-btn">送出</button>
             </form>
+
+            <div
+              id="chat-context-menu"
+              class="chat-context-menu"
+              role="menu"
+              hidden
+            >
+              <button
+                type="button"
+                class="chat-context-menu__item"
+                data-action="edit"
+                role="menuitem"
+              >
+                編輯訊息
+              </button>
+              <button
+                type="button"
+                class="chat-context-menu__item"
+                data-action="recall"
+                role="menuitem"
+              >
+                收回訊息
+              </button>
+            </div>
           </section>
         </section>
       </main>
@@ -572,6 +613,14 @@
           <div class="party-detail-actions">
             <button type="button" class="party-detail-join" id="party-join-btn">
               join
+            </button>
+            <button
+              type="button"
+              class="party-detail-rate"
+              id="party-detail-rate-btn"
+              hidden
+            >
+              評價
             </button>
             <button
               type="button"
@@ -751,10 +800,38 @@
                 >餐廳選擇</label
               >
               <div class="create-restaurant-control">
+                <div class="restaurant-select-combo" id="restaurant-select-combo">
+                  <input
+                    type="text"
+                    class="create-input restaurant-select-input"
+                    id="create-restaurant-search"
+                    placeholder="請選擇餐廳"
+                    autocomplete="off"
+                    aria-label="搜尋或選擇餐廳"
+                    aria-expanded="false"
+                    aria-controls="restaurant-select-list"
+                  />
+                  <button
+                    type="button"
+                    class="restaurant-select-toggle"
+                    id="restaurant-select-toggle"
+                    aria-label="展開餐廳選單"
+                  >
+                    ▾
+                  </button>
+                  <ul
+                    class="restaurant-select-list"
+                    id="restaurant-select-list"
+                    role="listbox"
+                    hidden
+                  ></ul>
+                </div>
                 <select
-                  class="create-input create-select"
+                  class="create-input create-select restaurant-native-select"
                   id="create-restaurant"
                   name="restaurantId"
+                  aria-hidden="true"
+                  tabindex="-1"
                 >
                   <option value="">讀取餐廳清單中...</option>
                 </select>
@@ -867,27 +944,13 @@
               </p>
             </div>
             <div class="create-row">
-              <label class="create-label" for="create-time">時間</label>
-              <select
-                class="create-input create-select"
-                id="create-time"
-                name="time"
-              >
-                <option value="今天 08:00">今天 08:00</option>
-                <option value="今天 09:00">今天 09:00</option>
-                <option value="今天 10:00">今天 10:00</option>
-                <option value="今天 11:00">今天 11:00</option>
-                <option value="今天 12:00">今天 12:00</option>
-                <option value="今天 12:30">今天 12:30</option>
-                <option value="今天 13:00">今天 13:00</option>
-                <option value="今天 17:30">今天 17:30</option>
-                <option value="今天 18:00">今天 18:00</option>
-                <option value="今天 18:30" selected>今天 18:30</option>
-                <option value="今天 19:00">今天 19:00</option>
-                <option value="今天 20:00">今天 20:00</option>
-                <option value="今天 21:00">今天 21:00</option>
-                <option value="今天 22:00">今天 22:00</option>
-              </select>
+              <label class="create-label" for="create-date">日期</label>
+              <input
+                type="date"
+                class="create-input"
+                id="create-date"
+                name="partyDate"
+              />
             </div>
             <div class="create-row">
               <label class="create-label" for="create-meal-type">餐期</label>
@@ -898,9 +961,22 @@
               >
                 <option value="早餐">早餐</option>
                 <option value="午餐" selected>午餐</option>
+                <option value="下午茶">下午茶</option>
                 <option value="晚餐">晚餐</option>
                 <option value="宵夜">宵夜</option>
+                <option value="其他">其他</option>
               </select>
+            </div>
+            <div class="create-row">
+              <label class="create-label" for="create-time">時間</label>
+              <select
+                class="create-input create-select"
+                id="create-time"
+                name="time"
+              >
+                <option value="">請先選擇餐期</option>
+              </select>
+              <p class="create-file-hint">時間會依照餐期自動顯示，每 30 分鐘一個選項。</p>
             </div>
             <div class="create-row">
               <label class="create-label" for="create-max-members"
@@ -1088,75 +1164,115 @@
               <h2 id="profile-preference-title" class="profile-panel-title">
                 飲食偏好
               </h2>
-              <div class="preference-group">
+              <div class="preference-group" data-preference-group="diet">
                 <p class="preference-title">飲食習慣</p>
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="diet"
-                    value="素食"
+                <div class="preference-chip-list" id="diet-chip-list">
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="diet"
+                      value="素食"
+                      disabled
+                    /><span>素食</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="diet"
+                      value="不吃辣"
+                      disabled
+                    /><span>不吃辣</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="diet"
+                      value="可吃辣"
+                      disabled
+                    /><span>可吃辣</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="diet"
+                      value="不吃牛"
+                      disabled
+                    /><span>不吃牛</span></label
+                  >
+                  <span id="diet-custom-options" class="preference-custom-options"></span>
+                </div>
+                <div class="preference-add-row">
+                  <input
+                    type="text"
+                    class="preference-add-input"
+                    id="diet-custom-input"
+                    placeholder="新增飲食習慣，例如：少油、海鮮過敏"
                     disabled
-                  />素食</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="diet"
-                    value="不吃辣"
+                  />
+                  <button
+                    type="button"
+                    class="preference-add-btn"
+                    id="diet-add-btn"
                     disabled
-                  />不吃辣</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="diet"
-                    value="可吃辣"
-                    disabled
-                  />可吃辣</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="diet"
-                    value="不吃牛"
-                    disabled
-                  />不吃牛</label
-                >
+                  >
+                    新增
+                  </button>
+                </div>
               </div>
-              <div class="preference-group">
+              <div class="preference-group" data-preference-group="cuisine">
                 <p class="preference-title">喜歡類型</p>
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="cuisine"
-                    value="中式"
+                <div class="preference-chip-list" id="cuisine-chip-list">
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="cuisine"
+                      value="中式"
+                      disabled
+                    /><span>中式</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="cuisine"
+                      value="日式"
+                      disabled
+                    /><span>日式</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="cuisine"
+                      value="速食"
+                      disabled
+                    /><span>速食</span></label
+                  >
+                  <label class="preference-chip preference-chip--preset"
+                    ><input
+                      type="checkbox"
+                      name="cuisine"
+                      value="咖啡廳"
+                      disabled
+                    /><span>咖啡廳</span></label
+                  >
+                  <span id="cuisine-custom-options" class="preference-custom-options"></span>
+                </div>
+                <div class="preference-add-row">
+                  <input
+                    type="text"
+                    class="preference-add-input"
+                    id="cuisine-custom-input"
+                    placeholder="新增喜歡類型，例如：韓式、火鍋"
                     disabled
-                  />中式</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="cuisine"
-                    value="日式"
+                  />
+                  <button
+                    type="button"
+                    class="preference-add-btn"
+                    id="cuisine-add-btn"
                     disabled
-                  />日式</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="cuisine"
-                    value="速食"
-                    disabled
-                  />速食</label
-                >
-                <label class="preference-chip"
-                  ><input
-                    type="checkbox"
-                    name="cuisine"
-                    value="咖啡廳"
-                    disabled
-                  />咖啡廳</label
-                >
+                  >
+                    新增
+                  </button>
+                </div>
               </div>
             </section>
 
@@ -1345,6 +1461,7 @@
                     <th>ID</th>
                     <th>帳號 / 姓名</th>
                     <th>角色</th>
+                    <th>學生證審核</th>
                     <th>建立飯局</th>
                     <th>評分</th>
                     <th>操作</th>
