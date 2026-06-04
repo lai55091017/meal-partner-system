@@ -255,7 +255,7 @@ router.get("/", async (req, res) => {
       LEFT JOIN restaurants r ON r.id = p.restaurant_id
       JOIN users u ON p.host_id = u.id
       LEFT JOIN party_members pm ON p.id = pm.party_id
-      WHERE p.status <> 'deleted'
+      WHERE p.status NOT IN ('deleted', 'cleared')
       GROUP BY p.id, u.id, r.id
       ORDER BY p.created_at DESC
       `,
@@ -326,7 +326,7 @@ router.get("/:id", async (req, res) => {
       JOIN users u ON p.host_id = u.id
       LEFT JOIN party_members pm ON p.id = pm.party_id
       WHERE p.id = $1
-        AND p.status <> 'deleted'
+        AND p.status NOT IN ('deleted', 'cleared')
       GROUP BY p.id, u.id, r.id
       `,
       [id]
@@ -894,7 +894,7 @@ router.delete("/:id", async (req, res) => {
     await client.query(
       `
       UPDATE parties
-      SET status = 'deleted'
+      SET status = 'cleared'
       WHERE id = $1
       `,
       [id]
@@ -902,7 +902,7 @@ router.delete("/:id", async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({ message: "飯局紀錄已刪除，歷史評價已保留" });
+    res.json({ message: "飯局紀錄已清除，後台狀態已改為已清除" });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("刪除飯局失敗：", error);

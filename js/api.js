@@ -176,10 +176,6 @@ const api = {
         return requestApi(`/admin/parties?userId=${encodeURIComponent(userId)}`);
     },
 
-    getAdminChats(userId) {
-        return requestApi(`/admin/chats?userId=${encodeURIComponent(userId)}`);
-    },
-
     getAdminReports(userId) {
         return requestApi(`/admin/reports?userId=${encodeURIComponent(userId)}`);
     },
@@ -234,13 +230,6 @@ const api = {
         return requestApi(`/admin/users/${targetUserId}/verification`, {
             method: "PUT",
             body: JSON.stringify({ userId, status, note }),
-        });
-    },
-
-    adminDeleteChatMessage(messageId, userId) {
-        return requestApi(`/admin/chats/${messageId}`, {
-            method: "DELETE",
-            body: JSON.stringify({ userId }),
         });
     },
 

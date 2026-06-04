@@ -728,6 +728,14 @@
             <button type="button" class="party-detail-rate" id="party-rate-btn">
               評價
             </button>
+            <button
+              type="button"
+              class="party-detail-delete-record"
+              id="party-closed-clear-btn"
+              hidden
+            >
+              清除紀錄
+            </button>
           </div>
         </article>
       </main>
@@ -1303,7 +1311,7 @@
             <div>
               <h2 id="admin-title" class="admin-title">後台管理</h2>
               <p class="admin-desc">
-                管理使用者、飯局與聊天室訊息。此頁僅管理員帳號可使用。
+                管理使用者、餐廳、飯局與檢舉審核。此頁僅管理員帳號可使用。
               </p>
             </div>
             <button
@@ -1329,10 +1337,6 @@
             <article class="admin-summary-card">
               <span class="admin-summary-label">飯局</span>
               <strong id="admin-total-parties">0</strong>
-            </article>
-            <article class="admin-summary-card">
-              <span class="admin-summary-label">聊天室訊息</span>
-              <strong id="admin-total-messages">0</strong>
             </article>
             <article class="admin-summary-card">
               <span class="admin-summary-label">評價</span>
@@ -1427,6 +1431,7 @@
                 <tbody id="admin-restaurant-list"></tbody>
               </table>
             </div>
+            <div class="admin-pagination" id="admin-restaurants-pagination" aria-label="分頁控制"></div>
           </section>
 
           <section class="admin-section" aria-labelledby="admin-users-title">
@@ -1449,6 +1454,7 @@
                 <tbody id="admin-user-list"></tbody>
               </table>
             </div>
+            <div class="admin-pagination" id="admin-users-pagination" aria-label="分頁控制"></div>
           </section>
 
           <section class="admin-section" aria-labelledby="admin-parties-title">
@@ -1470,30 +1476,7 @@
                 <tbody id="admin-party-list"></tbody>
               </table>
             </div>
-          </section>
-
-          <section class="admin-section" aria-labelledby="admin-chats-title">
-            <h3 id="admin-chats-title" class="admin-section-title">
-              聊天室訊息管理
-            </h3>
-            <p class="admin-section-desc">
-              顯示最近 100 則訊息，管理員可刪除不當訊息。
-            </p>
-            <div class="admin-table-wrap">
-              <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>飯局</th>
-                    <th>發送者</th>
-                    <th>訊息</th>
-                    <th>時間</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody id="admin-chat-list"></tbody>
-              </table>
-            </div>
+            <div class="admin-pagination" id="admin-parties-pagination" aria-label="分頁控制"></div>
           </section>
 
           <section class="admin-section" aria-labelledby="admin-reports-title">
@@ -1501,7 +1484,7 @@
               檢舉審核
             </h3>
             <p class="admin-section-desc">
-              查看使用者送出的飯局、主辦人與聊天室訊息檢舉，並標記處理狀態。
+              查看使用者送出的飯局與使用者檢舉，並標記處理狀態。
             </p>
             <div class="admin-table-wrap">
               <table class="admin-table">
@@ -1518,6 +1501,7 @@
                 <tbody id="admin-report-list"></tbody>
               </table>
             </div>
+            <div class="admin-pagination" id="admin-reports-pagination" aria-label="分頁控制"></div>
           </section>
         </section>
       </main>

@@ -243,10 +243,9 @@ router.get("/summary", async (req, res) => {
 
     await ensureReportsTable();
 
-    const [users, parties, messages, ratings, restaurants, pendingReports, pendingVerifications, cancelled, ended] = await Promise.all([
+    const [users, parties, ratings, restaurants, pendingReports, pendingVerifications, cancelled, ended] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS count FROM users"),
       pool.query("SELECT COUNT(*)::int AS count FROM parties"),
-      pool.query("SELECT COUNT(*)::int AS count FROM chat_messages"),
       pool.query("SELECT COUNT(*)::int AS count FROM ratings"),
       pool.query("SELECT COUNT(*)::int AS count FROM restaurants"),
       pool.query("SELECT COUNT(*)::int AS count FROM reports WHERE status = 'pending'"),
@@ -259,7 +258,6 @@ router.get("/summary", async (req, res) => {
       summary: {
         users: users.rows[0].count,
         parties: parties.rows[0].count,
-        messages: messages.rows[0].count,
         ratings: ratings.rows[0].count,
         restaurants: restaurants.rows[0].count,
         pendingReports: pendingReports.rows[0].count,
@@ -370,40 +368,6 @@ router.get("/parties", async (req, res) => {
   }
 });
 
-/**
- * 聊天訊息列表
- * GET /api/admin/chats?userId=1
- */
-router.get("/chats", async (req, res) => {
-  try {
-    const admin = await assertAdmin(req, res);
-    if (!admin) return;
-
-    const result = await pool.query(
-      `
-      SELECT
-        cm.id,
-        cm.party_id,
-        p.title AS party_title,
-        cm.user_id,
-        u.name AS sender_name,
-        u.account AS sender_account,
-        cm.message,
-        cm.created_at
-      FROM chat_messages cm
-      JOIN users u ON cm.user_id = u.id
-      JOIN parties p ON cm.party_id = p.id
-      ORDER BY cm.created_at DESC, cm.id DESC
-      LIMIT 100
-      `
-    );
-
-    res.json({ messages: result.rows });
-  } catch (error) {
-    console.error("取得後台聊天室訊息失敗：", error);
-    res.status(500).json({ message: "取得後台聊天室訊息失敗", error: error.message });
-  }
-});
 
 /**
  * 管理員取消飯局
@@ -452,29 +416,41 @@ router.delete("/parties/:id", async (req, res) => {
 
     await client.query("BEGIN");
 
+    const partyResult = await client.query(
+      `
+      SELECT id
+      FROM parties
+      WHERE id = $1
+      FOR UPDATE
+      `,
+      [id]
+    );
+
+    if (partyResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "找不到飯局" });
+    }
+
+    await client.query("DELETE FROM ratings WHERE party_id = $1", [id]);
+    await client.query("DELETE FROM chat_messages WHERE party_id = $1", [id]);
+    await client.query("DELETE FROM party_members WHERE party_id = $1", [id]);
+    await client.query("UPDATE notifications SET party_id = NULL WHERE party_id = $1", [id]);
+
     const result = await client.query(
       `
-      UPDATE parties
-      SET status = 'deleted'
+      DELETE FROM parties
       WHERE id = $1
-        AND status <> 'deleted'
       RETURNING *
       `,
       [id]
     );
 
-    if (result.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ message: "找不到飯局" });
-    }
-
-    await client.query("DELETE FROM chat_messages WHERE party_id = $1", [id]);
-    await client.query("DELETE FROM party_members WHERE party_id = $1", [id]);
-    await client.query("UPDATE notifications SET party_id = NULL WHERE party_id = $1", [id]);
-
     await client.query("COMMIT");
 
-    res.json({ message: "飯局紀錄已刪除，歷史評價已保留" });
+    res.json({
+      message: "飯局已從資料庫真正刪除，相關評價資料也已刪除",
+      party: result.rows[0],
+    });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("管理員刪除飯局失敗：", error);
@@ -576,37 +552,6 @@ router.delete("/users/:id", async (req, res) => {
   } catch (error) {
     console.error("管理員刪除使用者失敗：", error);
     res.status(500).json({ message: "管理員刪除使用者失敗", error: error.message });
-  }
-});
-
-/**
- * 管理員刪除聊天室訊息
- * DELETE /api/admin/chats/:id
- */
-router.delete("/chats/:id", async (req, res) => {
-  try {
-    const admin = await assertAdmin(req, res);
-    if (!admin) return;
-
-    const { id } = req.params;
-
-    const result = await pool.query(
-      `
-      DELETE FROM chat_messages
-      WHERE id = $1
-      RETURNING *
-      `,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "找不到聊天室訊息" });
-    }
-
-    res.json({ message: "聊天室訊息已刪除" });
-  } catch (error) {
-    console.error("管理員刪除聊天室訊息失敗：", error);
-    res.status(500).json({ message: "管理員刪除聊天室訊息失敗", error: error.message });
   }
 });
 

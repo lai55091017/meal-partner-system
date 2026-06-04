@@ -137,6 +137,7 @@
     const partyJoinBtn = $("#party-join-btn");
     const partyDetailDeleteBtn = $("#party-detail-delete-btn");
     const partyRateBtn = $("#party-rate-btn");
+    const partyClosedClearBtn = $("#party-closed-clear-btn");
     const joinedMemberList = $("#joined-member-list");
     const joinedMembersCount = $("#joined-members-count");
     const partyChatBtn = $("#party-chat-btn");
@@ -185,12 +186,10 @@
     const adminMessage = $("#admin-message");
     const adminTotalUsers = $("#admin-total-users");
     const adminTotalParties = $("#admin-total-parties");
-    const adminTotalMessages = $("#admin-total-messages");
     const adminTotalRatings = $("#admin-total-ratings");
     const adminTotalRestaurants = $("#admin-total-restaurants");
     const adminUserList = $("#admin-user-list");
     const adminPartyList = $("#admin-party-list");
-    const adminChatList = $("#admin-chat-list");
     const createRestaurantSelect = $("#create-restaurant");
     const createRestaurantSearch = $("#create-restaurant-search");
     const restaurantSelectCombo = $("#restaurant-select-combo");
@@ -222,6 +221,10 @@
     const adminRestaurantSaveBtn = $("#admin-restaurant-save-btn");
     const adminRestaurantCancelEdit = $("#admin-restaurant-cancel-edit");
     const adminRestaurantList = $("#admin-restaurant-list");
+    const adminRestaurantsPagination = $("#admin-restaurants-pagination");
+    const adminUsersPagination = $("#admin-users-pagination");
+    const adminPartiesPagination = $("#admin-parties-pagination");
+    const adminReportsPagination = $("#admin-reports-pagination");
     const detailReportBtn = $("#detail-report-btn");
     const joinedReportBtn = $("#joined-report-btn");
     const reportModal = $("#report-modal");
@@ -261,6 +264,13 @@
     let pendingProfileAvatarFile = null;
     let pendingProfileAvatarPreview = "";
     let isSavingProfile = false;
+    const ADMIN_PAGE_SIZE = 10;
+    const adminPaginationState = {
+        restaurants: 1,
+        users: 1,
+        parties: 1,
+        reports: 1,
+    };
 
     // 正式版不再顯示範例飯局 / 範例聊天室；只顯示資料庫或使用者實際建立、加入的資料。
     const DEMO_PARTY_IDS = new Set(["default-my-party", "other-demo-party"]);
@@ -2541,12 +2551,23 @@
         if (!partyId) return;
 
         if (!isLoggedIn() || !currentUser?.id) {
-            alert("請先登入後再刪除飯局紀錄");
+            await showAppAlert("請先登入後再清除飯局紀錄。", "尚未登入", { danger: true });
             switchView("login");
             return;
         }
 
-        if (!confirm("確定要刪除這筆已取消或已結束的飯局紀錄嗎？刪除後會同步從 PostgreSQL 資料庫移除，無法復原。")) return;
+        const party = normalizeParty(currentParty || findAccessiblePartyById(partyId) || {});
+        const confirmed = await showAppConfirm(
+            `確定要清除「${party.partyName || "這筆飯局"}」的紀錄嗎？\n\n這個操作只會把此飯局從前台清除，後台狀態會顯示為「已清除」。`,
+            {
+                title: "清除飯局紀錄",
+                confirmText: "確認清除",
+                cancelText: "先不要",
+                danger: true,
+            }
+        );
+
+        if (!confirmed) return;
 
         try {
             if (isBackendPartyId(partyId)) {
@@ -2564,10 +2585,10 @@
             renderChatRoomList();
             await renderNotifications();
 
-            alert("飯局紀錄已從資料庫刪除");
+            await showAppAlert("飯局紀錄已清除，後台狀態會顯示為「已清除」。", "清除成功");
         } catch (error) {
-            console.error("刪除飯局紀錄失敗：", error);
-            alert(error.message || "刪除飯局紀錄失敗，請確認後端是否啟動");
+            console.error("清除飯局紀錄失敗：", error);
+            await showAppAlert(error.message || "清除飯局紀錄失敗，請確認後端是否啟動", "清除失敗", { danger: true });
         }
     }
 
@@ -2690,17 +2711,72 @@
         element.classList.add(`party-status--${status.key}`);
     }
 
+    function buildJoinConfirmMessage(party) {
+        const normalizedParty = normalizeParty(party);
+        const lines = [
+            `確定要加入「${normalizedParty.partyName}」嗎？`,
+            "",
+            `店家：${normalizedParty.store || "尚未填寫"}`,
+            `時間：${normalizedParty.time || "尚未填寫"}`,
+            `餐期：${normalizedParty.mealType || "尚未填寫"}`,
+            `人數：${getPartyPeopleText(normalizedParty)}`,
+        ];
+
+        if (normalizedParty.restaurantAddress) {
+            lines.push(`地址：${normalizedParty.restaurantAddress}`);
+        }
+
+        lines.push("");
+        lines.push("加入後可在「我的飯局」查看，並可進入聊天室與成員討論。");
+
+        return lines.join("\n");
+    }
+
+    async function confirmJoinParty(party) {
+        return showAppConfirm(buildJoinConfirmMessage(party), {
+            title: "確認加入飯局",
+            confirmText: "確認加入",
+            cancelText: "先不要",
+        });
+    }
+
+    function buildLeaveConfirmMessage(party) {
+        const normalizedParty = normalizeParty(party);
+        const lines = [
+            `確定要退出「${normalizedParty.partyName}」嗎？`,
+            "",
+            `店家：${normalizedParty.store || "尚未填寫"}`,
+            `時間：${normalizedParty.time || "尚未填寫"}`,
+            `餐期：${normalizedParty.mealType || "尚未填寫"}`,
+            `目前人數：${getPartyPeopleText(normalizedParty)}`,
+            "",
+            "退出後，你將不會出現在成員名單中，也無法直接進入該飯局聊天室。",
+            "若飯局尚未額滿，之後仍可重新加入。"
+        ];
+
+        return lines.join("\n");
+    }
+
+    async function confirmLeaveParty(party) {
+        return showAppConfirm(buildLeaveConfirmMessage(party), {
+            title: "確認退出飯局",
+            confirmText: "確認退出",
+            cancelText: "先不要",
+            danger: true,
+        });
+    }
+
     async function joinCurrentParty() {
         if (!currentParty) return null;
 
         if (isAdminUser()) {
-            alert("管理員帳號為純後台模式，不能加入飯局。");
+            await showAppAlert("管理員帳號為純後台模式，不能加入飯局。", "無法加入", { danger: true });
             switchView("admin");
             return normalizeParty(currentParty);
         }
 
         if (!isLoggedIn()) {
-            alert("請先登入後再加入飯局");
+            await showAppAlert("請先登入後再加入飯局。", "尚未登入", { danger: true });
             switchView("login");
             return null;
         }
@@ -2708,12 +2784,12 @@
         const party = normalizeParty(currentParty);
 
         if (party.isCanceled) {
-            alert("此飯局已取消，無法加入。");
+            await showAppAlert("此飯局已取消，無法加入。", "無法加入", { danger: true });
             return party;
         }
 
         if (isPartyEnded(party)) {
-            alert("此飯局已結束，無法加入。");
+            await showAppAlert("此飯局已結束，無法加入。", "無法加入", { danger: true });
             return party;
         }
 
@@ -2742,7 +2818,7 @@
             const isFull = Number(party.currentPeople || party.members.length) >= party.maxMembers;
 
             if (!alreadyJoined && isFull) {
-                alert("此飯局人數已滿");
+                await showAppAlert("此飯局人數已滿。", "無法加入", { danger: true });
                 return party;
             }
 
@@ -2767,7 +2843,7 @@
             return party;
         } catch (error) {
             console.error("加入飯局失敗：", error);
-            alert(error.message || "加入飯局失敗");
+            await showAppAlert(error.message || "加入飯局失敗", "加入失敗", { danger: true });
             return party;
         }
     }
@@ -2794,7 +2870,7 @@
         if (!currentParty) return null;
 
         if (!isLoggedIn()) {
-            alert("請先登入後再退出飯局");
+            await showAppAlert("請先登入後再退出飯局。", "尚未登入", { danger: true });
             switchView("login");
             return null;
         }
@@ -2863,7 +2939,7 @@
             return party;
         } catch (error) {
             console.error("退出飯局失敗：", error);
-            alert(error.message || "退出飯局失敗");
+            await showAppAlert(error.message || "退出飯局失敗", "退出失敗", { danger: true });
             return party;
         }
     }
@@ -3003,6 +3079,46 @@
         return normalizedParty.isMine === true || isCurrentUserMember(normalizedParty);
     }
 
+    function applyRatingButtonState(party, options = {}) {
+        if (!partyRateBtn || !party) return;
+
+        const normalizedParty = normalizeParty(party);
+        const status = getPartyStatus(normalizedParty);
+        const ended = isPartyEnded(normalizedParty);
+        const reviewed = options.reviewed ?? hasReviewedParty(normalizedParty.id);
+        const canRate = canCurrentUserRateParty(normalizedParty);
+        const hasTargets = getRatingTargets(normalizedParty).length > 0;
+
+        partyRateBtn.hidden = false;
+        partyRateBtn.disabled = status.key === "canceled" || reviewed || !canRate || !hasTargets;
+        partyRateBtn.textContent = reviewed ? "已評價" : "評價";
+        partyRateBtn.title = !canRate
+            ? "只有本場飯局成員可以評價"
+            : reviewed
+                ? "同一場飯局只能評價一次"
+                : !hasTargets
+                    ? "目前沒有其他成員可以評價"
+                    : ended
+                        ? "飯局已結束，可以上傳本場飯局成員評價"
+                        : "可以先進入評價頁填寫，飯局結束後才能上傳";
+    }
+
+    async function syncRatingButtonReviewedState(party) {
+        if (!partyRateBtn || !party || !currentUser?.id || !isBackendPartyId(party.id)) return;
+
+        const partyId = String(party.id);
+
+        try {
+            const reviewed = await refreshRatingReviewedCache(partyId);
+
+            if (!currentParty || String(normalizeParty(currentParty).id) !== partyId) return;
+
+            applyRatingButtonState(normalizeParty(currentParty), { reviewed });
+        } catch (error) {
+            console.error("同步評價按鈕狀態失敗：", error);
+        }
+    }
+
     function updateJoinedActionButtons(party) {
         const status = getPartyStatus(party);
 
@@ -3011,6 +3127,7 @@
             if (partyCancelBtn) partyCancelBtn.hidden = true;
             if (partyChatBtn) partyChatBtn.hidden = true;
             if (partyRateBtn) partyRateBtn.hidden = true;
+            if (partyClosedClearBtn) partyClosedClearBtn.hidden = true;
             return;
         }
 
@@ -3025,24 +3142,19 @@
             partyCancelBtn.disabled = !canCancel;
         }
 
+        if (partyClosedClearBtn) {
+            const canClearClosedRecord = canCurrentUserDeleteClosedParty(party);
+            partyClosedClearBtn.hidden = !canClearClosedRecord;
+            partyClosedClearBtn.disabled = !canClearClosedRecord;
+        }
+
         if (partyChatBtn) {
             partyChatBtn.disabled = status.key === "canceled";
         }
 
         if (partyRateBtn) {
-            const ended = isPartyEnded(party);
-            const reviewed = hasReviewedParty(party.id);
-            const canRate = canCurrentUserRateParty(party);
-            const hasTargets = getRatingTargets(party).length > 0;
-            partyRateBtn.disabled = status.key === "canceled" || reviewed || !canRate || !hasTargets;
-            partyRateBtn.textContent = reviewed ? "已評價" : "評價";
-            partyRateBtn.title = !canRate
-                ? "只有本場飯局成員可以評價"
-                : reviewed
-                    ? "同一場飯局只能評價一次"
-                    : ended
-                        ? "可以評價並送出本場飯局成員評價"
-                        : "可以先進入評價頁填寫，飯局結束後才能上傳";
+            applyRatingButtonState(party);
+            syncRatingButtonReviewedState(party);
         }
     }
 
@@ -3485,8 +3597,18 @@
             alert(error.message || "讀取飯局詳情失敗");
         }
 
+        currentParty = normalizeParty(currentParty);
+
+        // 我的飯局包含「我是主辦人」與「我已加入」。
+        // 已結束飯局需要顯示評價按鈕，因此不能停留在一般詳情頁，
+        // 要進入有聊天室、退出、取消、評價按鈕的已加入/管理頁。
+        if (!isAdminUser() && isMyRelatedParty(currentParty)) {
+            openJoinedParty();
+            return;
+        }
+
         fillPartyFields(detailFields, currentParty);
-        renderImageBox(detailPartyImage, normalizeParty(currentParty).imageUrl, "飯");
+        renderImageBox(detailPartyImage, currentParty.imageUrl, "飯");
         renderPartyHostPreview(currentParty);
 
         const status = getPartyStatus(currentParty);
@@ -4292,7 +4414,6 @@
     function renderAdminSummary(summary = {}) {
         if (adminTotalUsers) adminTotalUsers.textContent = String(summary.users || 0);
         if (adminTotalParties) adminTotalParties.textContent = String(summary.parties || 0);
-        if (adminTotalMessages) adminTotalMessages.textContent = String(summary.messages || 0);
         if (adminTotalRatings) adminTotalRatings.textContent = String(summary.ratings || 0);
         if (adminTotalRestaurants) adminTotalRestaurants.textContent = String(summary.restaurants || 0);
         if (adminPendingReports) adminPendingReports.textContent = String(summary.pendingReports || 0);
@@ -4305,6 +4426,8 @@
             ended: "已結束",
             cancelled: "已取消",
             canceled: "已取消",
+            cleared: "已清除",
+            deleted: "已刪除",
         };
 
         return labels[status] || status || "-";
@@ -4343,9 +4466,79 @@
         adminRestaurantName?.focus();
     }
 
+    function getAdminPaginationElement(key) {
+        const map = {
+            restaurants: adminRestaurantsPagination,
+            users: adminUsersPagination,
+            parties: adminPartiesPagination,
+            reports: adminReportsPagination,
+        };
+
+        return map[key] || null;
+    }
+
+    function getAdminPageData(key, items = []) {
+        const list = Array.isArray(items) ? items : [];
+        const totalItems = list.length;
+        const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
+        const currentPage = Math.min(Math.max(Number(adminPaginationState[key] || 1), 1), totalPages);
+
+        adminPaginationState[key] = currentPage;
+
+        const startIndex = (currentPage - 1) * ADMIN_PAGE_SIZE;
+        const endIndex = Math.min(startIndex + ADMIN_PAGE_SIZE, totalItems);
+
+        return {
+            totalItems,
+            totalPages,
+            currentPage,
+            startIndex,
+            endIndex,
+            pageItems: list.slice(startIndex, endIndex),
+        };
+    }
+
+    function renderAdminPagination(key, pageData, renderFn) {
+        const container = getAdminPaginationElement(key);
+        if (!container || !pageData) return;
+
+        container.innerHTML = "";
+
+        const info = document.createElement("span");
+        info.className = "admin-pagination-info";
+        info.textContent = pageData.totalItems > 0
+            ? `第 ${pageData.currentPage} / ${pageData.totalPages} 頁（${pageData.startIndex + 1}-${pageData.endIndex} / ${pageData.totalItems} 筆）`
+            : "第 1 / 1 頁（0 筆）";
+
+        const prevBtn = document.createElement("button");
+        prevBtn.type = "button";
+        prevBtn.className = "admin-pagination-btn";
+        prevBtn.textContent = "上一頁";
+        prevBtn.disabled = pageData.currentPage <= 1;
+        prevBtn.addEventListener("click", () => {
+            adminPaginationState[key] = Math.max(1, pageData.currentPage - 1);
+            renderFn();
+        });
+
+        const nextBtn = document.createElement("button");
+        nextBtn.type = "button";
+        nextBtn.className = "admin-pagination-btn";
+        nextBtn.textContent = "下一頁";
+        nextBtn.disabled = pageData.currentPage >= pageData.totalPages;
+        nextBtn.addEventListener("click", () => {
+            adminPaginationState[key] = Math.min(pageData.totalPages, pageData.currentPage + 1);
+            renderFn();
+        });
+
+        container.append(prevBtn, info, nextBtn);
+    }
+
     function renderAdminRestaurants(restaurants = []) {
         if (!adminRestaurantList) return;
         adminRestaurantList.innerHTML = "";
+
+        const pageData = getAdminPageData("restaurants", restaurants);
+        renderAdminPagination("restaurants", pageData, () => renderAdminRestaurants(restaurants));
 
         if (!restaurants.length) {
             const row = document.createElement("tr");
@@ -4354,7 +4547,7 @@
             return;
         }
 
-        restaurants.forEach((restaurant) => {
+        pageData.pageItems.forEach((restaurant) => {
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td>${restaurant.id}</td>
@@ -4369,6 +4562,7 @@
             `;
 
             const actionCell = row.querySelector("td:last-child");
+            actionCell?.classList.add("admin-action-cell");
             const editBtn = document.createElement("button");
             editBtn.type = "button";
             editBtn.className = "admin-secondary-btn";
@@ -4411,6 +4605,9 @@
         if (!adminUserList) return;
         adminUserList.innerHTML = "";
 
+        const pageData = getAdminPageData("users", users);
+        renderAdminPagination("users", pageData, () => renderAdminUsers(users));
+
         if (!users.length) {
             const row = document.createElement("tr");
             row.innerHTML = `<td colspan="7" class="admin-empty-cell">目前沒有使用者資料。</td>`;
@@ -4418,7 +4615,7 @@
             return;
         }
 
-        users.forEach((user) => {
+        pageData.pageItems.forEach((user) => {
             const row = document.createElement("tr");
             const ratingText = user.average_rating == null ? "尚無" : `${Number(user.average_rating).toFixed(1)} / 5`;
             const isSelf = String(user.id) === String(currentUser?.id);
@@ -4444,6 +4641,7 @@
             `;
 
             const actionCell = row.querySelector("td:last-child");
+            actionCell?.classList.add("admin-action-cell");
 
             if (user.role !== "admin") {
                 const approveBtn = document.createElement("button");
@@ -4490,6 +4688,9 @@
         if (!adminPartyList) return;
         adminPartyList.innerHTML = "";
 
+        const pageData = getAdminPageData("parties", parties);
+        renderAdminPagination("parties", pageData, () => renderAdminParties(parties));
+
         if (!parties.length) {
             const row = document.createElement("tr");
             row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有飯局資料。</td>`;
@@ -4497,7 +4698,7 @@
             return;
         }
 
-        parties.forEach((party) => {
+        pageData.pageItems.forEach((party) => {
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td>${party.id}</td>
@@ -4513,6 +4714,7 @@
             `;
 
             const actionCell = row.querySelector("td:last-child");
+            actionCell?.classList.add("admin-action-cell");
             const cancelBtn = document.createElement("button");
             cancelBtn.type = "button";
             cancelBtn.className = "admin-secondary-btn";
@@ -4536,7 +4738,7 @@
             deleteBtn.className = "admin-danger-btn";
             deleteBtn.textContent = "刪除";
             deleteBtn.addEventListener("click", async () => {
-                const confirmed = await showAppConfirm(`確定要刪除飯局「${party.title}」嗎？此動作無法復原。`, {
+                const confirmed = await showAppConfirm(`確定要從資料庫永久刪除飯局「${party.title}」嗎？此動作會同步刪除該飯局的成員、聊天室資料與評價資料，無法復原。`, {
                     title: "刪除飯局",
                     confirmText: "確認刪除",
                     cancelText: "返回",
@@ -4553,47 +4755,6 @@
             adminPartyList.appendChild(row);
         });
     }
-
-    function renderAdminChats(messages = []) {
-        if (!adminChatList) return;
-        adminChatList.innerHTML = "";
-
-        if (!messages.length) {
-            const row = document.createElement("tr");
-            row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有聊天室訊息。</td>`;
-            adminChatList.appendChild(row);
-            return;
-        }
-
-        messages.forEach((message) => {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${message.id}</td>
-                <td>${message.party_title || "-"}</td>
-                <td>${message.sender_name || message.sender_account || "-"}</td>
-                <td class="admin-message-cell">${message.message || ""}</td>
-                <td>${formatAdminDate(message.created_at)}</td>
-                <td></td>
-            `;
-
-            const actionCell = row.querySelector("td:last-child");
-            const deleteBtn = document.createElement("button");
-            deleteBtn.type = "button";
-            deleteBtn.className = "admin-danger-btn";
-            deleteBtn.textContent = "刪除";
-            deleteBtn.addEventListener("click", async () => {
-                if (!confirm("確定要刪除這則聊天室訊息嗎？")) return;
-                await api.adminDeleteChatMessage(message.id, currentUser.id);
-                await loadAdminDashboard();
-                if (currentChatPartyId) {
-                    await openChatRoom(currentChatPartyId);
-                }
-            });
-            actionCell.appendChild(deleteBtn);
-            adminChatList.appendChild(row);
-        });
-    }
-
 
     function getAdminReportTypeText(type) {
         const labels = {
@@ -4637,6 +4798,9 @@
         if (!adminReportList) return;
         adminReportList.innerHTML = "";
 
+        const pageData = getAdminPageData("reports", reports);
+        renderAdminPagination("reports", pageData, () => renderAdminReports(reports));
+
         if (!reports.length) {
             const row = document.createElement("tr");
             row.innerHTML = `<td colspan="6" class="admin-empty-cell">目前沒有檢舉資料。</td>`;
@@ -4644,7 +4808,7 @@
             return;
         }
 
-        reports.forEach((report) => {
+        pageData.pageItems.forEach((report) => {
             const row = document.createElement("tr");
             const statusClass = `admin-report-status--${report.status || "pending"}`;
             const detail = getAdminReportDetailText(report);
@@ -4664,6 +4828,7 @@
             `;
 
             const actionCell = row.querySelector("td:last-child");
+            actionCell?.classList.add("admin-action-cell");
             if (report.status === "pending") {
                 const resolveBtn = document.createElement("button");
                 resolveBtn.type = "button";
@@ -4718,11 +4883,10 @@
             }
             setAdminMessage("讀取後台資料中...");
 
-            const [summaryResult, usersResult, partiesResult, chatsResult, restaurantsResult, reportsResult] = await Promise.all([
+            const [summaryResult, usersResult, partiesResult, restaurantsResult, reportsResult] = await Promise.all([
                 api.getAdminSummary(currentUser.id),
                 api.getAdminUsers(currentUser.id),
                 api.getAdminParties(currentUser.id),
-                api.getAdminChats(currentUser.id),
                 api.getAdminRestaurants(currentUser.id),
                 api.getAdminReports(currentUser.id),
             ]);
@@ -4730,7 +4894,6 @@
             renderAdminSummary(summaryResult.summary || {});
             renderAdminUsers(usersResult.users || []);
             renderAdminParties(partiesResult.parties || []);
-            renderAdminChats(chatsResult.messages || []);
             renderAdminRestaurants(restaurantsResult.restaurants || []);
             renderAdminReports(reportsResult.reports || []);
             setAdminMessage("後台資料已更新。 ");
@@ -4950,25 +5113,25 @@
         if (!currentParty) return;
 
         if (!isLoggedIn() || !currentUser?.id) {
-            alert("請先登入後再送出評價。");
+            await showAppAlert("請先登入後再送出評價。", "尚未登入", { danger: true });
             switchView("login");
             return;
         }
 
         const party = normalizeParty(currentParty);
         if (!canCurrentUserRateParty(party)) {
-            alert("只有本場飯局成員可以送出評價。");
+            await showAppAlert("只有本場飯局成員可以送出評價。", "無法評價", { danger: true });
             return;
         }
 
         if (!isPartyEnded(party)) {
-            alert("飯局結束後才能評價。" + getPartyEndHint(party));
+            await showAppAlert("飯局結束後才能評價。" + getPartyEndHint(party), "尚未可上傳", { danger: true });
             return;
         }
 
         const reviewed = await refreshRatingReviewedCache(party.id);
         if (reviewed) {
-            alert("你已經評價過這場飯局，同一場飯局只能評價一次。 ");
+            await showAppAlert("你已經評價過這場飯局，同一場飯局只能評價一次。", "已完成評價");
             await renderRatingPage();
             return;
         }
@@ -4979,7 +5142,7 @@
         const items = $$(".rating-item", ratingList);
 
         if (!items.length) {
-            alert("目前沒有其他成員可以評價。 ");
+            await showAppAlert("目前沒有其他成員可以評價。", "無法評價", { danger: true });
             return;
         }
 
@@ -5024,6 +5187,12 @@
 
             markPartyReviewed(party.id);
 
+            if (partyRateBtn) {
+                partyRateBtn.disabled = true;
+                partyRateBtn.textContent = "已評價";
+                partyRateBtn.title = "同一場飯局只能評價一次";
+            }
+
             await addNotification(
                 "rating",
                 "評價已送出",
@@ -5034,11 +5203,11 @@
             await renderProfileRatingSummary();
             updateJoinedActionButtons(party);
             await renderRatingPage();
-            alert("評價已送出並儲存到資料庫。 ");
+            await showAppAlert("評價已送出並儲存到資料庫。之後同一場飯局不能再次評價。", "評價完成");
             switchView("profile");
         } catch (error) {
             console.error("送出評價失敗：", error);
-            alert(error.message || "送出評價失敗");
+            await showAppAlert(error.message || "送出評價失敗", "送出失敗", { danger: true });
         } finally {
             if (ratingSubmitBtn) {
                 ratingSubmitBtn.textContent = "送出評價";
@@ -5048,7 +5217,7 @@
 
     async function openRatingPage() {
         if (isAdminUser()) {
-            alert("管理員帳號為純後台模式，不能使用評價功能。");
+            await showAppAlert("管理員帳號為純後台模式，不能使用評價功能。", "無法評價", { danger: true });
             switchView("admin");
             return;
         }
@@ -5058,7 +5227,7 @@
                 currentParty = await loadBackendPartyDetail(currentParty.id);
             } catch (error) {
                 console.error("重新讀取飯局成員失敗：", error);
-                alert(error.message || "讀取飯局成員失敗");
+                await showAppAlert(error.message || "讀取飯局成員失敗", "讀取失敗", { danger: true });
                 return;
             }
         }
@@ -5066,13 +5235,13 @@
         const party = normalizeParty(currentParty);
 
         if (!isLoggedIn() || !currentUser?.id) {
-            alert("請先登入後再評價。");
+            await showAppAlert("請先登入後再評價。", "尚未登入", { danger: true });
             switchView("login");
             return;
         }
 
         if (!canCurrentUserRateParty(party)) {
-            alert("只有本場飯局成員可以評價。");
+            await showAppAlert("只有本場飯局成員可以評價。", "無法評價", { danger: true });
             return;
         }
 
@@ -5311,6 +5480,9 @@
 
             if (status.key === "canceled" || status.key === "ended" || status.key === "full") return;
 
+            const confirmed = await confirmJoinParty(currentParty);
+            if (!confirmed) return;
+
             const joinedParty = await joinCurrentParty();
             if (!joinedParty) return;
             prepareOtherPartyCard();
@@ -5326,6 +5498,14 @@
             if (!currentParty) switchView("home");
         });
 
+        partyClosedClearBtn?.addEventListener("click", async () => {
+            if (!currentParty) return;
+            if (!canCurrentUserDeleteClosedParty(currentParty)) return;
+            const partyId = currentParty.id;
+            await deleteClosedPartyRecord(partyId);
+            if (!currentParty) switchView("home");
+        });
+
         partyChatBtn?.addEventListener("click", () => {
             if (!currentParty) return;
             openChatRoom(currentParty.id);
@@ -5334,7 +5514,9 @@
 
         partyLeaveBtn?.addEventListener("click", async () => {
             if (!currentParty) return;
-            if (!confirm("確定要退出這個飯局嗎？")) return;
+
+            const confirmed = await confirmLeaveParty(currentParty);
+            if (!confirmed) return;
 
             const updatedParty = await leaveCurrentParty();
             if (!updatedParty) return;
@@ -5350,7 +5532,7 @@
                 partyJoinBtn.textContent = status.key === "full" ? "已額滿" : status.key === "canceled" ? "已取消" : status.key === "ended" ? "已結束" : "join";
             }
 
-            alert("已退出飯局，成員列表與人數已更新。你可以再次按 join 加入。");
+            await showAppAlert("已退出飯局，成員列表與人數已更新。你可以再次按 join 加入。", "退出成功");
             switchView("partyDetail");
         });
 

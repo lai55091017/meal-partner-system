@@ -8867,3 +8867,416 @@ body {
   }
 }
 
+/* ======================================================
+   JOIN CONFIRM DIALOG PATCH
+   加入飯局確認視窗使用多行資訊，保持網站風格且清楚顯示飯局重點。
+   ====================================================== */
+.app-dialog__message {
+  word-break: break-word;
+}
+
+/* ======================================================
+   LEAVE CONFIRM DIALOG PATCH
+   退出飯局確認視窗使用多行資訊，維持網站風格。
+   ====================================================== */
+.app-dialog__message {
+  word-break: break-word;
+}
+
+/* ======================================================
+   FAB HOME ONLY CLEAN PATCH
+   新增飯局按鈕：只在首頁顯示，移除過亮陰影，修正 + 置中。
+   ====================================================== */
+.app .fab {
+  display: none !important;
+}
+
+.app[data-view="home"] .fab {
+  display: grid !important;
+  place-items: center !important;
+  width: var(--fab-size) !important;
+  height: var(--fab-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #6f96a3 !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px rgba(45, 62, 68, 0.18) !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  overflow: hidden !important;
+}
+
+.app[data-view="home"] .fab::before,
+.app[data-view="home"] .fab::after {
+  display: none !important;
+  content: none !important;
+}
+
+.app[data-view="home"] .fab span {
+  display: grid !important;
+  place-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 1.85rem !important;
+  font-weight: 300 !important;
+  transform: translateY(-1px) !important;
+  pointer-events: none !important;
+}
+
+.app[data-view="home"] .fab:hover {
+  background: #638a97 !important;
+  box-shadow: 0 8px 18px rgba(45, 62, 68, 0.2) !important;
+  transform: translateY(-1px) !important;
+}
+
+.app[data-view="home"] .fab:active {
+  transform: scale(0.96) !important;
+  box-shadow: 0 5px 12px rgba(45, 62, 68, 0.18) !important;
+}
+
+/* ======================================================
+   CLOSED PARTY CLEAR BUTTON PATCH
+   已取消 / 已結束飯局可清除紀錄，保留歷史評價。
+   ====================================================== */
+.party-action-row .party-detail-delete-record {
+  flex: 1;
+  min-width: 0;
+}
+
+.party-detail-delete-record {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border: 1.5px solid rgba(255, 224, 224, 0.88);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 224, 224, 0.12);
+  color: #ffe8e8;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    opacity 0.2s,
+    transform 0.15s,
+    background 0.2s;
+}
+
+.party-detail-delete-record:hover {
+  background: rgba(255, 224, 224, 0.18);
+}
+
+.party-detail-delete-record:active {
+  transform: scale(0.99);
+}
+
+.party-detail-delete-record[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .party-action-row {
+    flex-wrap: wrap;
+  }
+
+  .party-action-row .party-detail-delete-record {
+    flex-basis: 100%;
+  }
+}
+
+/* ======================================================
+   ADMIN UI OPTIMIZATION PATCH
+   後台排版優化：移除聊天室訊息管理、統一表格線與操作按鈕對齊。
+   ====================================================== */
+.admin-panel {
+  overflow: hidden;
+}
+
+.admin-desc {
+  max-width: 620px;
+}
+
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-section {
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.admin-table {
+  table-layout: fixed;
+  border-spacing: 0;
+  border-collapse: separate;
+}
+
+.admin-table th,
+.admin-table td {
+  height: 54px;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  vertical-align: middle;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table th:first-child,
+.admin-table td:first-child {
+  width: 58px;
+  text-align: center;
+}
+
+.admin-table th:last-child,
+.admin-table td:last-child,
+.admin-action-cell {
+  width: 150px;
+}
+
+.admin-table td:last-child,
+.admin-action-cell {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  min-height: 54px;
+}
+
+.admin-secondary-btn,
+.admin-danger-btn {
+  min-width: 48px;
+  height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-table td {
+  overflow-wrap: anywhere;
+}
+
+.admin-muted {
+  word-break: break-word;
+}
+
+@media (min-width: 768px) {
+  .admin-summary-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .admin-table th:last-child,
+  .admin-table td:last-child,
+  .admin-action-cell {
+    width: 170px;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-panel {
+    padding: 18px 12px 22px;
+    border-radius: 22px;
+  }
+
+  .admin-table {
+    min-width: 760px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 10px 12px;
+  }
+
+  .admin-secondary-btn,
+  .admin-danger-btn {
+    min-width: 46px;
+    height: 30px;
+    padding: 0 11px;
+  }
+}
+
+/* ======================================================
+   ADMIN TABLE ACTION LINE ALIGN FIX
+   修正後台操作欄使用 flex 導致表格底線中斷 / 不對齊問題。
+   ====================================================== */
+.admin-table {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+}
+
+.admin-table th,
+.admin-table td {
+  height: 58px !important;
+  min-height: 58px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
+}
+
+/* 不能把 td 本身改成 flex，否則表格線會和其他欄位錯位。 */
+.admin-table td:last-child,
+.admin-action-cell {
+  display: table-cell !important;
+  width: 170px !important;
+  min-width: 170px !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+  vertical-align: middle !important;
+}
+
+/* 按鈕用 inline-flex 排列，保留置中但不破壞表格線。 */
+.admin-table td:last-child > button,
+.admin-action-cell > button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 30px !important;
+  min-width: 50px !important;
+  margin: 0 8px 0 0 !important;
+  vertical-align: middle !important;
+}
+
+/* 最後一顆按鈕不多留右邊距。 */
+.admin-table td:last-child > button:last-child,
+.admin-action-cell > button:last-child {
+  margin-right: 0 !important;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+@media (max-width: 767px) {
+  .admin-table {
+    min-width: 820px !important;
+  }
+
+  .admin-table td:last-child,
+  .admin-action-cell {
+    width: 170px !important;
+    min-width: 170px !important;
+  }
+}
+
+/* ======================================================
+   ADMIN ACTION COLUMN LEFT SHIFT PATCH
+   使用者管理 / 後台表格：讓操作欄按鈕往左一些，避免太貼右側。
+   ====================================================== */
+.admin-table th:last-child,
+.admin-table td:last-child,
+.admin-action-cell {
+  width: 220px !important;
+  min-width: 220px !important;
+}
+
+.admin-table td:last-child,
+.admin-action-cell {
+  padding-left: 18px !important;
+  padding-right: 20px !important;
+  text-align: left !important;
+}
+
+.admin-table td:last-child > button,
+.admin-action-cell > button {
+  margin-right: 10px !important;
+}
+
+.admin-table td:last-child > button:last-child,
+.admin-action-cell > button:last-child {
+  margin-right: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .admin-table th:last-child,
+  .admin-table td:last-child,
+  .admin-action-cell {
+    width: 230px !important;
+    min-width: 230px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-table {
+    min-width: 860px !important;
+  }
+
+  .admin-table th:last-child,
+  .admin-table td:last-child,
+  .admin-action-cell {
+    width: 220px !important;
+    min-width: 220px !important;
+  }
+}
+
+/* ======================================================
+   ADMIN PAGINATION PATCH
+   後台分頁：每頁 10 筆、上一頁 / 下一頁、目前頁數。
+   ====================================================== */
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 2px 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.8rem;
+}
+
+.admin-pagination-info {
+  min-width: 170px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.admin-pagination-btn {
+  height: 30px;
+  min-width: 68px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: #e8e4dc;
+  color: var(--dark);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  .admin-pagination {
+    justify-content: space-between;
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  .admin-pagination-info {
+    min-width: auto;
+    flex: 1;
+    font-size: 0.75rem;
+  }
+
+  .admin-pagination-btn {
+    min-width: 62px;
+  }
+}
+

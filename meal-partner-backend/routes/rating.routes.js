@@ -35,37 +35,6 @@ function isAdminUserRow(user) {
   return user?.role === "admin" || user?.account === "admin";
 }
 
-async function ensureRatingHistoryColumns(client = pool) {
-  await client.query("ALTER TABLE ratings ADD COLUMN IF NOT EXISTS party_title_snapshot TEXT DEFAULT ''");
-  await client.query("ALTER TABLE ratings ADD COLUMN IF NOT EXISTS reviewer_name_snapshot TEXT DEFAULT ''");
-  await client.query("ALTER TABLE ratings ADD COLUMN IF NOT EXISTS target_name_snapshot TEXT DEFAULT ''");
-  await client.query("ALTER TABLE ratings ALTER COLUMN party_id DROP NOT NULL");
-  await client.query(`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'ratings_party_id_fkey'
-      ) THEN
-        ALTER TABLE ratings DROP CONSTRAINT ratings_party_id_fkey;
-      END IF;
-
-      IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'ratings_party_id_fkey'
-      ) THEN
-        ALTER TABLE ratings
-        ADD CONSTRAINT ratings_party_id_fkey
-        FOREIGN KEY (party_id)
-        REFERENCES parties(id)
-        ON DELETE SET NULL;
-      END IF;
-    END $$;
-  `);
-}
-
 function parsePartyEndTime(partyTime) {
   const text = String(partyTime || "");
   const dateTimeMatch = text.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s*(\d{1,2}):(\d{2})/);
@@ -152,8 +121,6 @@ router.get("/received/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
 
-    await ensureRatingHistoryColumns();
-
     const result = await pool.query(
       `
       SELECT
@@ -193,8 +160,6 @@ router.get("/received/:userId", async (req, res) => {
 router.get("/summary/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-
-    await ensureRatingHistoryColumns();
 
     const result = await pool.query(
       `
@@ -241,8 +206,6 @@ router.post("/", async (req, res) => {
     }
 
     await client.query("BEGIN");
-
-    await ensureRatingHistoryColumns(client);
 
     const reviewerUser = await getUserForRegularAction(client, reviewerId);
     if (!reviewerUser) {
@@ -365,11 +328,11 @@ router.post("/", async (req, res) => {
         `,
         [
           partyId,
-          party.title || "",
+          party.title || '',
           reviewerId,
-          reviewerUser.name || reviewerUser.account || "",
+          reviewerUser.name || reviewerUser.account || '',
           targetId,
-          targetUser.rows[0]?.name || targetUser.rows[0]?.account || "",
+          targetUser.rows[0]?.name || targetUser.rows[0]?.account || '',
           score,
           comment,
         ]

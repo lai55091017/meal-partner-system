@@ -68,14 +68,48 @@ ALTER TABLE parties ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS ratings (
   id SERIAL PRIMARY KEY,
-  party_id INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+  party_id INTEGER REFERENCES parties(id) ON DELETE SET NULL,
+  party_title_snapshot TEXT DEFAULT '',
   from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reviewer_name_snapshot TEXT DEFAULT '',
   to_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_name_snapshot TEXT DEFAULT '',
   score INTEGER NOT NULL CHECK (score BETWEEN 1 AND 5),
   comment TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(party_id, from_user_id, to_user_id)
 );
+
+-- 評價歷史保留：
+-- 後台管理員可以真正刪除 parties，但 ratings 不會一起刪除。
+-- 這段只在初始化資料庫或手動執行 SQL 時使用，不放到一般 API request 中，避免 deadlock。
+ALTER TABLE ratings ADD COLUMN IF NOT EXISTS party_title_snapshot TEXT DEFAULT '';
+ALTER TABLE ratings ADD COLUMN IF NOT EXISTS reviewer_name_snapshot TEXT DEFAULT '';
+ALTER TABLE ratings ADD COLUMN IF NOT EXISTS target_name_snapshot TEXT DEFAULT '';
+ALTER TABLE ratings ALTER COLUMN party_id DROP NOT NULL;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'ratings_party_id_fkey'
+  ) THEN
+    ALTER TABLE ratings DROP CONSTRAINT ratings_party_id_fkey;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'ratings_party_id_fkey'
+  ) THEN
+    ALTER TABLE ratings
+    ADD CONSTRAINT ratings_party_id_fkey
+    FOREIGN KEY (party_id)
+    REFERENCES parties(id)
+    ON DELETE SET NULL;
+  END IF;
+END $$;
 
 
 -- 後台管理角色：user=一般使用者、admin=管理員。
